@@ -1,0 +1,33 @@
+[project]
+name = "cleair"
+version = "0.1.0"
+description = "cleair - explainable agent observability"
+authors = [{ name = "Filip Naudot" }]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+]
+keywords = ["observability", "opentelemetry", "llm", "xai", "explainable ai"]
+urls = { Homepage = "https://cleairlabs.com/" }
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = [
+  "opentelemetry-api>=1.20.0",
+  "opentelemetry-sdk>=1.20.0",
+  "opentelemetry-exporter-otlp>=1.20.0",
+]
+
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+license-files = ["LICENSE"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

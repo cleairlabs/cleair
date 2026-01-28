@@ -1,0 +1,25 @@
+from __future__ import annotations
+
+import asyncio
+import cleair
+
+
+class Agent:
+    async def run(self, user_input: str) -> str:
+        with cleair.span("agent.plan"):
+            await asyncio.sleep(0.02)
+
+        with cleair.span("agent.llm", attributes={"gen_ai.request.model": "unknown"}):
+            await asyncio.sleep(0.05)
+            return f"Echo: {user_input}"
+
+
+@cleair.trace(span_name="agent.request")
+async def main() -> None:
+    await Agent().run("hello")
+
+
+if __name__ == "__main__":
+    # cleair.init()
+    cleair.init(cleair.CleairConfig(service_name="my-agent", exporter="console"))
+    asyncio.run(main())
