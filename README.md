@@ -1,10 +1,10 @@
-# cleair
-cleair - a framework for explainable agent observability
+# cleAIr
 
 
+Clone the repository, then install with:
 ## Install
 ```bash
-pip install cleair
+pip install -e .
 ```
 
 ## Quickstart
