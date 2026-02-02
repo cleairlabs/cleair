@@ -8,6 +8,7 @@ from cleair._core import (
     trace,
     trace_call,
     trace_expr,
+    observe,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "trace",
     "trace_call",
     "trace_expr",
+    "observe",
 ]

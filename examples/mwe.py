@@ -10,7 +10,7 @@ class Agent:
             return "Hello, how can I help you?"
 
 
-@cleair.trace(span_name="agent.request")
+@cleair.observe(name="agent.request")
 def main() -> None:
     result = Agent().run("hello")
     print(result)

@@ -143,5 +143,43 @@ def trace(function=None, /, *, span_name: str | None = None, attributes: dict[st
     return decorator(function)
 
 
+def _merge_observe_attributes(
+    *,
+    attributes: dict[str, str | int | float | bool] | None,
+    metadata: dict[str, str | int | float | bool] | None,
+    session_id: str | None,
+) -> dict[str, str | int | float | bool] | None:
+    resolved_attributes: dict[str, str | int | float | bool] = {}
+    if metadata:
+        resolved_attributes.update(metadata)
+    if attributes:
+        resolved_attributes.update(attributes)
+    if session_id is not None:
+        resolved_attributes["session.id"] = session_id
+    return resolved_attributes or None
+
+
+def observe(
+    function=None,
+    /,
+    *,
+    span_name: str | None = None,
+    name: str | None = None,
+    attributes: dict[str, str | int | float | bool] | None = None,
+    metadata: dict[str, str | int | float | bool] | None = None,
+    session_id: str | None = None,
+):
+    resolved_span_name = span_name or name
+    resolved_attributes = _merge_observe_attributes(
+        attributes=attributes,
+        metadata=metadata,
+        session_id=session_id,
+    )
+
+    if function is None:
+        return trace(span_name=resolved_span_name, attributes=resolved_attributes)
+    return trace(function, span_name=resolved_span_name, attributes=resolved_attributes)
+
+
 def trace_expr(expression_thunk, /, *, span_name: str = "expression", attributes: dict[str, str | int | float | bool] | None = None):
     return trace_call(expression_thunk, span_name=span_name, attributes=attributes)

@@ -15,4 +15,21 @@ cleair.init(CleairConfig(service_name="my-agent", exporter="console"))
 
 with cleair.span("agent.request"):
     ...
+
+@cleair.observe()
+def main() -> None:
+    with cleair.span("agent.request"):
+        ...
+```
+
+```python
+from cleair import observe
+
+@observe()
+def story():
+    ...
+
+@observe()
+def main():
+    ...
 ```
