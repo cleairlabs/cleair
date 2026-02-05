@@ -19,8 +19,7 @@ _initialized = False
 
 def init(config: CleairConfig | None = None) -> None:
     global _initialized
-    if _initialized:
-        return
+    if _initialized: return
 
     resolved_config = config or CleairConfig.from_env()
     resource = Resource.create({"service.name": resolved_config.service_name})
@@ -28,12 +27,10 @@ def init(config: CleairConfig | None = None) -> None:
 
     if resolved_config.exporter == "console":
         from opentelemetry.sdk.trace.export import ConsoleSpanExporter
-
         exporter = ConsoleSpanExporter()
         provider.add_span_processor(BatchSpanProcessor(exporter))
     elif resolved_config.exporter == "otlp_http":
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-
         exporter = OTLPSpanExporter(endpoint=resolved_config.otlp_http_endpoint)
         provider.add_span_processor(BatchSpanProcessor(exporter))
     else:
