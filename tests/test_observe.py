@@ -1,51 +1,60 @@
 from __future__ import annotations
 
-import unittest
-from unittest import mock
-
 import cleair
 from cleair import _core
 
 
-class TestObserve(unittest.TestCase):
-    def test_observe_without_parentheses_calls_trace(self) -> None:
-        def target() -> str:
-            return "ok"
+def test_observe_without_parentheses_calls_trace(monkeypatch) -> None:
+    def target() -> str: return "ok"
 
-        with mock.patch("cleair._core.trace") as trace_mock:
-            trace_mock.side_effect = lambda *args, **kwargs: args[0] if args else (lambda function: function)
-            wrapped = _core.observe(target)
+    trace_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
-        self.assertIs(wrapped, target)
-        trace_mock.assert_called_once_with(target, span_name=None, attributes=None)
+    def fake_trace(*args, **kwargs):
+        trace_calls.append((args, kwargs))
+        if args: return args[0]
+        return lambda function: function
 
-    def test_observe_with_langfuse_style_arguments(self) -> None:
-        def target() -> str:
-            return "ok"
+    monkeypatch.setattr(_core, "trace", fake_trace)
+    wrapped = _core.observe(target)
 
-        with mock.patch("cleair._core.trace") as trace_mock:
-            trace_mock.side_effect = lambda *args, **kwargs: args[0] if args else (lambda function: function)
-            decorator = _core.observe(
-                name="story",
-                metadata={"source": "langfuse", "override": "metadata"},
-                attributes={"override": "attributes"},
-                session_id="session-1",
-            )
-            wrapped = decorator(target)
+    assert wrapped is target
+    assert trace_calls == [((target,), {"span_name": None, "attributes": None})]
 
-        self.assertIs(wrapped, target)
-        trace_mock.assert_called_once_with(
-            span_name="story",
-            attributes={
-                "source": "langfuse",
-                "override": "attributes",
-                "session.id": "session-1",
+
+def test_observe_merges_attributes_and_metadata(monkeypatch) -> None:
+    def target() -> str: return "ok"
+
+    trace_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+
+    def fake_trace(*args, **kwargs):
+        trace_calls.append((args, kwargs))
+        if args: return args[0]
+        return lambda function: function
+
+    monkeypatch.setattr(_core, "trace", fake_trace)
+    decorator = _core.observe(
+        name="story",
+        metadata={"source": "langfuse", "override": "metadata"},
+        attributes={"override": "attributes"},
+        session_id="session-1",
+    )
+    wrapped = decorator(target)
+
+    assert wrapped is target
+    assert trace_calls == [
+        (
+            (),
+            {
+                "span_name": "story",
+                "attributes": {
+                    "source": "langfuse",
+                    "override": "attributes",
+                    "session.id": "session-1",
+                },
             },
         )
-
-    def test_observe_is_exposed_on_package(self) -> None:
-        self.assertTrue(hasattr(cleair, "observe"))
+    ]
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_observe_is_exposed_on_package() -> None:
+    assert hasattr(cleair, "observe")
