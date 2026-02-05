@@ -5,12 +5,13 @@ from cleair import CleairConfig
 
 
 class Agent:
+    @cleair.observe(name="llm", capture_output=True)
     def run(self, user_input: str) -> str:
-        with cleair.span("agent.llm"):
+        with cleair.span("llm"):
             return "Hello, how can I help you?"
 
 
-@cleair.observe(name="agent.request")
+@cleair.observe(name="request", capture_output=True)
 def main() -> None:
     result = Agent().run("hello")
     print(result)

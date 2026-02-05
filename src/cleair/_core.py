@@ -67,7 +67,21 @@ def span(name: str, *, attributes: dict[str, str | int | float | bool] | None = 
             raise
 
 
-def trace_call(function, /, *args, span_name: str | None = None, attributes: dict[str, str | int | float | bool] | None = None, **kwargs):
+def _coerce_attribute_value(value: object) -> str | int | float | bool:
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    return repr(value)
+
+
+def trace_call(
+    function,
+    /,
+    *args,
+    span_name: str | None = None,
+    attributes: dict[str, str | int | float | bool] | None = None,
+    capture_output: bool = False,
+    **kwargs,
+):
     resolved_span_name = span_name or getattr(function, "__qualname__", getattr(function, "__name__", "call"))
     tracer = _tracer()
 
@@ -79,6 +93,8 @@ def trace_call(function, /, *args, span_name: str | None = None, attributes: dic
         start_time = time.perf_counter()
         try:
             result_value = function(*args, **kwargs)
+            if capture_output:
+                span_handle.add_event("function.output", {"value": _coerce_attribute_value(result_value)})
         except Exception as exception:
             span_handle.record_exception(exception)
             from opentelemetry.trace import Status, StatusCode
@@ -90,7 +106,15 @@ def trace_call(function, /, *args, span_name: str | None = None, attributes: dic
     return result_value
 
 
-async def _trace_call_async(function, /, *args, span_name: str | None = None, attributes: dict[str, str | int | float | bool] | None = None, **kwargs):
+async def _trace_call_async(
+    function,
+    /,
+    *args,
+    span_name: str | None = None,
+    attributes: dict[str, str | int | float | bool] | None = None,
+    capture_output: bool = False,
+    **kwargs,
+):
     resolved_span_name = span_name or getattr(function, "__qualname__", getattr(function, "__name__", "call"))
     tracer = _tracer()
 
@@ -101,7 +125,10 @@ async def _trace_call_async(function, /, *args, span_name: str | None = None, at
 
         start_time = time.perf_counter()
         try:
-            return await function(*args, **kwargs)
+            result_value = await function(*args, **kwargs)
+            if capture_output:
+                span_handle.add_event("function.output", {"value": _coerce_attribute_value(result_value)})
+            return result_value
         except Exception as exception:
             span_handle.record_exception(exception)
             from opentelemetry.trace import Status, StatusCode
@@ -111,7 +138,14 @@ async def _trace_call_async(function, /, *args, span_name: str | None = None, at
             span_handle.set_attribute("duration_ms", (time.perf_counter() - start_time) * 1000.0)
 
 
-def trace(function=None, /, *, span_name: str | None = None, attributes: dict[str, str | int | float | bool] | None = None):
+def trace(
+    function=None,
+    /,
+    *,
+    span_name: str | None = None,
+    attributes: dict[str, str | int | float | bool] | None = None,
+    capture_output: bool = False,
+):
     def decorator(target_function):
         if inspect.iscoroutinefunction(target_function):
             async def wrapped(*args, **kwargs):
@@ -120,6 +154,7 @@ def trace(function=None, /, *, span_name: str | None = None, attributes: dict[st
                     *args,
                     span_name=span_name,
                     attributes=attributes,
+                    capture_output=capture_output,
                     **kwargs,
                 )
             return wrapped
@@ -130,6 +165,7 @@ def trace(function=None, /, *, span_name: str | None = None, attributes: dict[st
                 *args,
                 span_name=span_name,
                 attributes=attributes,
+                capture_output=capture_output,
                 **kwargs,
             )
 
@@ -165,6 +201,7 @@ def observe(
     attributes: dict[str, str | int | float | bool] | None = None,
     metadata: dict[str, str | int | float | bool] | None = None,
     session_id: str | None = None,
+    capture_output: bool = False,
 ):
     resolved_span_name = span_name or name
     resolved_attributes = _merge_observe_attributes(
@@ -174,8 +211,17 @@ def observe(
     )
 
     if function is None:
-        return trace(span_name=resolved_span_name, attributes=resolved_attributes)
-    return trace(function, span_name=resolved_span_name, attributes=resolved_attributes)
+        return trace(
+            span_name=resolved_span_name,
+            attributes=resolved_attributes,
+            capture_output=capture_output,
+        )
+    return trace(
+        function,
+        span_name=resolved_span_name,
+        attributes=resolved_attributes,
+        capture_output=capture_output,
+    )
 
 
 def trace_expr(expression_thunk, /, *, span_name: str = "expression", attributes: dict[str, str | int | float | bool] | None = None):
