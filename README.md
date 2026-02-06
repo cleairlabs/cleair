@@ -1,14 +1,26 @@
 # cleAIr
 
+Explainable agent observability built on OpenTelemetry.
 
-## Install
+## SDKs
+
+| Language | Path | Status |
+|----------|------|--------|
+| Python | [`sdks/python/`](sdks/python/) | Active |
+| TS/JS | `sdks/typescript/` | Planned |
+
+
+
+## Install Python SDK
+
 Clone the repository, then install with:
 
 ```bash
-pip install -e .
+pip install -e sdks/python
 ```
 
-## Quickstart
+
+## Python SDK Example Using the Observe Decorator
 
 ```python
 from cleair import observe
@@ -23,15 +35,6 @@ def main() -> None:
 ```
 
 
-```python
-import cleair
+## License
 
-cleair.init(cleair.CleairConfig(service_name="my-agent", exporter="console"))
-
-@cleair.observe(name="agent.request")
-def main() -> None:
-    with cleair.span("agent.plan"):
-        ...
-    with cleair.span("agent.llm", attributes={"gen_ai.request.model": "gpt-4o"}):
-        ...
-```
+[GPLv3](LICENSE)
