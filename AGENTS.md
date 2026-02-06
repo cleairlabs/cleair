@@ -1,9 +1,5 @@
 # cleair agents
 
-Hello agent. You are among the most talented programmers of your generation.
-
-You are here to apply those skills to make cleair better.
-
 
 ## Philosophy
 

@@ -8,6 +8,12 @@ Clone the repository, then install with:
 pip install -e .
 ```
 
+or if you are in the project root:
+
+```bash
+pip install -e sdks/python
+```
+
 ## Quickstart
 
 ```python
