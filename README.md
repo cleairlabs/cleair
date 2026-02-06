@@ -10,16 +10,17 @@ Explainable agent observability built on OpenTelemetry.
 | TS/JS | `sdks/typescript/` | Planned |
 
 
-## Python SDK Example
 
-### Install
+## Install Python SDK
+
 Clone the repository, then install with:
 
 ```bash
 pip install -e sdks/python
 ```
 
-### Quickstart
+
+## Python SDK Example Using the Observe Decorator
 
 ```python
 from cleair import observe
