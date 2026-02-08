@@ -1,6 +1,6 @@
 # cleAIr
 
-Explainable agent observability built on OpenTelemetry.
+Explainable agent observability.
 
 ## SDKs
 
