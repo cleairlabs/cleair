@@ -1,0 +1,31 @@
+openapi: 3.1.0
+info:
+  title: cleair gateway API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8000
+paths:
+  /health/live:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+  /inferences:
+    post:
+      summary: Submit an inference job
+      responses:
+        '202':
+          description: Job accepted
+  /inferences/{job_id}:
+    get:
+      summary: Get inference job status
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job state and optional result
