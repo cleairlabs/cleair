@@ -7,7 +7,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class CleairConfig:
     service_name: str = "cleair-app"
-    exporter: str = "otlp_http"  # "otlp_http" or "console"
+    exporter: str = "otlp_http"  # "otlp_http", "console", or "terminal"
     otlp_http_endpoint: str = "http://localhost:4318/v1/traces"
 
     @staticmethod

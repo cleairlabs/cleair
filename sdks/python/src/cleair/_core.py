@@ -29,12 +29,19 @@ def init(config: CleairConfig | None = None) -> None:
         from opentelemetry.sdk.trace.export import ConsoleSpanExporter
         exporter = ConsoleSpanExporter()
         provider.add_span_processor(BatchSpanProcessor(exporter))
+    elif resolved_config.exporter == "terminal":
+        from cleair.exporters import CleairConsoleSpanExporter
+        exporter = CleairConsoleSpanExporter()
+        provider.add_span_processor(BatchSpanProcessor(exporter))
     elif resolved_config.exporter == "otlp_http":
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
         exporter = OTLPSpanExporter(endpoint=resolved_config.otlp_http_endpoint)
         provider.add_span_processor(BatchSpanProcessor(exporter))
     else:
-        raise ValueError(f"Unknown exporter: {resolved_config.exporter!r} (use 'otlp_http' or 'console')")
+        raise ValueError(
+            f"Unknown exporter: {resolved_config.exporter!r} "
+            "(use 'otlp_http', 'console', or 'terminal')"
+        )
 
     otel_trace.set_tracer_provider(provider)
     _initialized = True
