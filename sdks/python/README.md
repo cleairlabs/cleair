@@ -42,6 +42,14 @@ def main() -> None:
         ...
 ```
 
+For streaming terminal output (emit each ended span immediately):
+
+```python
+cleair.init(cleair.CleairConfig(service_name="my-agent", exporter="terminal", terminal_stream=True))
+```
+
+You can also use `CLEAIR_TERMINAL_STREAM=true`.
+
 Available exporters:
 - `otlp_http` (default)
 - `console` (OpenTelemetry JSON output)
