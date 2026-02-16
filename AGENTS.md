@@ -7,7 +7,9 @@ cleair is an XAI library built on OpenTelemetry, focused on clarity and low-fric
 
 Every line must earn its keep. Prefer readability over cleverness. Keep changes small and intentional.
 
-Never mix functionality changes with whitespace changes. All functionality changes must be tested.
+Never mix functionality changes with whitespace changes. 
+
+All functionality changes must be tested.
 
 The name cleair comes from "clear AI", hence cleAIr.
 

@@ -10,6 +10,7 @@ from cleair._core import (
     trace_expr,
     observe,
 )
+from cleair.exporters import CleairConsoleSpanExporter
 
 __all__ = [
     "CleairConfig",
@@ -22,4 +23,5 @@ __all__ = [
     "trace_call",
     "trace_expr",
     "observe",
+    "CleairConsoleSpanExporter",
 ]
