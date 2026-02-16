@@ -168,3 +168,27 @@ def test_cleair_span_exporter_emits_trace_continuation_after_root_batch(capsys) 
     assert captured_output.count("trace=") == 2
     assert "- request" in captured_output
     assert "- child.late" in captured_output
+
+
+def test_cleair_span_exporter_stream_mode_emits_spans_without_local_root(capsys) -> None:
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(CleairConsoleSpanExporter(use_rich=False, stream=True)))
+    tracer = provider.get_tracer("tests.stream")
+
+    parent_context = trace.SpanContext(
+        trace_id=0x11111111111111111111111111111111,
+        span_id=0x2222222222222222,
+        is_remote=False,
+        trace_flags=TraceFlags(TraceFlags.SAMPLED),
+        trace_state=trace.DEFAULT_TRACE_STATE,
+    )
+    context = trace.set_span_in_context(trace.NonRecordingSpan(parent_context))
+
+    with tracer.start_as_current_span("child.only", context=context):
+        pass
+
+    captured_output = capsys.readouterr().out
+    provider.shutdown()
+
+    assert captured_output.count("trace=") == 1
+    assert "- child.only" in captured_output

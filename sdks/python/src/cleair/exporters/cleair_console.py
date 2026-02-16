@@ -28,8 +28,9 @@ class CleairConsoleSpanExporter(SpanExporter):
       This is acceptable for finite workflows where the process exits, but it is
       not intended for long-running high-throughput services.
     """
-    def __init__(self, *, use_rich: bool = True) -> None:
+    def __init__(self, *, use_rich: bool = True, stream: bool = False) -> None:
         self.use_rich = use_rich
+        self.stream = stream
         self._pending_spans_by_trace_id: dict[int, list[ReadableSpan]] = defaultdict(list)
         self._emitted_trace_ids: set[int] = set()
         self._pending_spans_lock = threading.Lock()
@@ -38,6 +39,9 @@ class CleairConsoleSpanExporter(SpanExporter):
     def export(self, spans: Iterable[ReadableSpan]) -> SpanExportResult:
         span_list = list(spans)
         if not span_list: return SpanExportResult.SUCCESS
+        if self.stream:
+            self._emit_traces(self._group_spans_by_trace_id(span_list))
+            return SpanExportResult.SUCCESS
 
         ready_spans_by_trace_id: dict[int, list[ReadableSpan]] = {}
         touched_trace_ids: set[int] = set()
@@ -55,6 +59,13 @@ class CleairConsoleSpanExporter(SpanExporter):
         return SpanExportResult.SUCCESS
 
 
+    def _group_spans_by_trace_id(self, spans: list[ReadableSpan]) -> dict[int, list[ReadableSpan]]:
+        spans_by_trace_id: dict[int, list[ReadableSpan]] = defaultdict(list)
+        for span in spans:
+            spans_by_trace_id[span.context.trace_id].append(span)
+        return dict(spans_by_trace_id)
+
+
     def _emit_traces(self, spans_by_trace_id: dict[int, list[ReadableSpan]]) -> None:
         if not spans_by_trace_id: return
         rich_console = self._resolve_rich_console()
@@ -64,7 +75,7 @@ class CleairConsoleSpanExporter(SpanExporter):
                 self._print_trace_with_rich(rich_console, trace_id, trace_spans)
             else:
                 self._print_trace_plain(trace_id, trace_spans)
-            self._emitted_trace_ids.add(trace_id)
+            if not self.stream: self._emitted_trace_ids.add(trace_id)
 
 
     def _has_root_span(self, spans: list[ReadableSpan]) -> bool:
