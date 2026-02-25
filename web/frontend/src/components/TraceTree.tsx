@@ -56,7 +56,21 @@ function buildTreeEntries(graph: FlowGraph): TreeEntry[] {
   return entries;
 }
 
-/** Sparkle — represents intelligence and orchestration. */
+/** Three connected nodes — represents AI reasoning and neural networks. */
+function TraceIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10">
+      <line x1="5" y1="2" x2="2" y2="7.5" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="5" y1="2" x2="8" y2="7.5" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="2" y1="7.5" x2="8" y2="7.5" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="5" cy="2" r="1.5" fill="white" />
+      <circle cx="2" cy="7.5" r="1.5" fill="white" />
+      <circle cx="8" cy="7.5" r="1.5" fill="white" />
+    </svg>
+  );
+}
+
+/** Sparkle — represents a top-level trace. */
 function AgentIcon() {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10" fill="white">
@@ -86,6 +100,7 @@ function ToolIcon() {
 }
 
 const kindIcons: Record<FlowNodeKind, () => ReactElement> = {
+  trace: TraceIcon,
   agent: AgentIcon,
   search: SearchIcon,
   tool: ToolIcon,

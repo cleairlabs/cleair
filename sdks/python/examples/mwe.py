@@ -4,31 +4,38 @@ import cleair
 from cleair import CleairConfig
 
 
-class Agent:
-    @cleair.observe(name="run()", capture_output=True, attributes=cleair.kind.AGENT)
-    def run(self, user_input: str) -> str:
-        with cleair.span("llm", attributes=cleair.kind.TOOL):
-            time.sleep(1) # Sleep in order to make streaming visible when using terminal_stream=True
-            if user_input == "boom":
-                raise RuntimeError("synthetic llm failure")
-            return "Hello, how can I help you?"
+@cleair.observe(name="web_search", capture_output=True, attributes=cleair.kind.SEARCH)
+def web_search(query: str) -> list[str]:
+    time.sleep(0.7)
+    return ["en.wikipedia.org/quantum", "arxiv.org/abs/2401", "nature.com/articles/q42"]
 
 
-@cleair.observe(name="main()", capture_output=True, attributes=cleair.kind.AGENT)
+@cleair.observe(name="fetch_page", attributes=cleair.kind.SEARCH)
+def fetch_page(url: str) -> str:
+    time.sleep(0.3)
+    return f"<html>content from {url}</html>"
+
+
+@cleair.observe(name="call_llm", capture_output=True, attributes=cleair.kind.TOOL)
+def call_llm(prompt: str) -> str:
+    time.sleep(1.1)
+    return "Quantum computing uses qubits to perform calculations exponentially faster than classical bits."
+
+
+@cleair.observe(name="research", attributes=cleair.kind.AGENT)
+def research(topic: str) -> str:
+    urls = web_search(topic)
+    pages = [fetch_page(url) for url in urls[:2]]
+    return call_llm(f"Summarise based on: {pages}")
+
+
+@cleair.observe(name="main", attributes=cleair.kind.TRACE)
 def main() -> None:
-    for _ in range(2):
-        result = Agent().run("hello")
-        if VERBOSE: print(f"AGENT SAYS: {result}")
-
-    if VERBOSE: print("SENDING THE BOOM...")
-    try:
-        Agent().run("boom")
-    except RuntimeError:
-        if VERBOSE: print("recovered from synthetic error")
-
-    time.sleep(4)
+    for topic in ["quantum computing", "large language models"]:
+        answer = research(topic)
+        print(f"[{topic}] {answer}")
 
 
 if __name__ == "__main__":
-    cleair.init(CleairConfig(service_name="my-agent", exporter="cleair_http"))
+    cleair.init(CleairConfig(service_name="research-agent", exporter="cleair_http"))
     main()

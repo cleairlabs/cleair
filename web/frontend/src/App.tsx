@@ -102,6 +102,12 @@ export default function App() {
                 <span className="detail-label">Why</span>
                 <p className="detail-body">{selectedNode.whyDescription}</p>
               </div>
+              {selectedNode.output !== null && (
+                <div className="detail-section">
+                  <span className="detail-label">Output</span>
+                  <pre className="detail-output">{selectedNode.output}</pre>
+                </div>
+              )}
             </>
           ) : (
             <p className="detail-empty">Select a step to inspect it.</p>
