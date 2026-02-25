@@ -6,7 +6,7 @@ Explainable agent observability.
 
 | Language | Path | Status |
 |----------|------|--------|
-| Python | [`sdks/python/`](sdks/python/) | Active |
+| Python | [`sdks/python/`](sdks/python/) | Available |
 | TS/JS | `sdks/typescript/` | Planned |
 
 

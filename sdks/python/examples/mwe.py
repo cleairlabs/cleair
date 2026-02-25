@@ -18,13 +18,13 @@ class Agent:
 def main() -> None:
     for _ in range(2):
         result = Agent().run("hello")
-        print(f"AGENT SAYS: {result}")
+        if VERBOSE: print(f"AGENT SAYS: {result}")
 
-    print("SENDING THE BOOM...")
+    if VERBOSE: print("SENDING THE BOOM...")
     try:
         Agent().run("boom")
     except RuntimeError:
-        print("recovered from synthetic error")
+        if VERBOSE: print("recovered from synthetic error")
 
     time.sleep(4)
 
