@@ -1,0 +1,348 @@
+:root {
+  --bg: #141414;
+  --surface: #1c1c1c;
+  --surface-hover: #222222;
+  --surface-selected: #2a2a2a;
+  --border: #2e2e2e;
+  --text: #e2e2e2;
+  --text-muted: #888;
+  --text-dim: #3a3a3a;
+
+  --status-running: #3b82f6;
+  --status-done: #22c55e;
+  --status-warn: #f59e0b;
+  --status-error: #ef4444;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  height: 100dvh;
+}
+
+/* ── Panels ─────────────────────────────────────────────────────────── */
+
+.panel {
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.details-panel {
+  border-left: 1px solid var(--border);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.panel-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.panel-header-title {
+  color: var(--text);
+}
+
+.spacer { flex: 1; }
+
+/* ── Connection indicator ───────────────────────────────────────────── */
+
+.connection-indicator {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.connection-connecting {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.connection-connected {
+  color: var(--status-done);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.connection-offline {
+  color: var(--status-error);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ── Trace list ─────────────────────────────────────────────────────── */
+
+.trace-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.trace-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.trace-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 14px 5px 14px;
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  font-family: inherit;
+  min-height: 32px;
+}
+
+.trace-row:hover { background: var(--surface-hover); }
+
+.trace-row-selected {
+  background: var(--surface-selected) !important;
+  border-left-color: var(--kind-color);
+}
+
+/* ── Tree connector cells ───────────────────────────────────────────── */
+
+.tree-connectors {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.connector-pass,
+.connector-last,
+.connector-mid,
+.connector-empty {
+  width: 20px;
+  height: 32px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.connector-pass::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+
+.connector-mid::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+
+.connector-mid::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  right: 0;
+  height: 1px;
+  background: var(--border);
+}
+
+.connector-last::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 0;
+  height: 50%;
+  width: 1px;
+  background: var(--border);
+}
+
+.connector-last::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  right: 0;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── Kind badge ─────────────────────────────────────────────────────── */
+
+.kind-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* ── Trace row contents ─────────────────────────────────────────────── */
+
+.trace-row-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trace-row-duration {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Status icons ───────────────────────────────────────────────────── */
+
+.status-icon {
+  font-size: 11px;
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+}
+
+.status-done  { color: var(--status-done); }
+.status-warn  { color: var(--status-warn); }
+.status-error { color: var(--status-error); }
+
+.status-running {
+  color: var(--status-running);
+  display: inline-block;
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Details panel ──────────────────────────────────────────────────── */
+
+.details-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.detail-value {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.detail-step-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-kind-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.detail-muted {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.detail-body {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.detail-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ── Run summary footer ─────────────────────────────────────────────── */
+
+.run-summary {
+  display: flex;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.run-summary-item {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.run-summary-error    { color: var(--status-error); }
+.run-summary-complete { color: var(--status-done); }
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+
+@media (max-width: 800px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: auto;
+  }
+
+  body { height: auto; overflow: auto; }
+  .panel { height: 50dvh; }
+}

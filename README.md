@@ -25,13 +25,13 @@ pip install -e sdks/python
 ```python
 from cleair import observe
 
-@observe(name="story", capture_output=True)
-def story() -> None:
+@observe(name="llm", capture_output=True)
+def llm() -> None:
     ...
 
 @observe()
 def main() -> None:
-    story()
+    llm()
 ```
 
 

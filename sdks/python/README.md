@@ -51,9 +51,28 @@ cleair.init(cleair.CleairConfig(service_name="my-agent", exporter="terminal", te
 You can also use `CLEAIR_TERMINAL_STREAM=true`.
 
 Available exporters:
-- `otlp_http` (default)
-- `console` (OpenTelemetry JSON output)
-- `terminal` (cleair tree-style terminal output, uses `rich` when installed and TTY is available)
+- `otlp_http` (default) — OTLP/HTTP to any OpenTelemetry collector
+- `cleair_http` — streams to the cleAIr web UI (`http://localhost:8000/v1/events`)
+- `console` — OpenTelemetry JSON output
+- `terminal` — cleair tree-style terminal output (uses `rich` when installed)
+
+## Node kinds
+
+Control the icon and color shown in the web UI via the `cleair.kind` attribute:
+
+```python
+with cleair.span("retrieve", attributes=cleair.kind.SEARCH):
+    ...
+
+@cleair.observe(name="plan", attributes=cleair.kind.AGENT)
+def plan(): ...
+```
+
+| Constant | Icon | Color |
+|---|---|---|
+| `cleair.kind.AGENT` | sparkle | purple |
+| `cleair.kind.SEARCH` | magnifying glass | blue |
+| `cleair.kind.TOOL` | terminal `>_` | orange (default) |
 
 Install rich terminal rendering:
 
