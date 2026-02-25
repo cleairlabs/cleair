@@ -66,7 +66,7 @@ function AgentIcon() {
 }
 
 /** Magnifying glass — represents search and retrieval. */
-function RagIcon() {
+function SearchIcon() {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round">
       <circle cx="4.2" cy="4.2" r="2.8" />
@@ -87,7 +87,7 @@ function ToolIcon() {
 
 const kindIcons: Record<FlowNodeKind, () => ReactElement> = {
   agent: AgentIcon,
-  rag: RagIcon,
+  search: SearchIcon,
   tool: ToolIcon,
 };
 

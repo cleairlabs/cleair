@@ -5,16 +5,16 @@ from cleair import CleairConfig
 
 
 class Agent:
-    @cleair.observe(name="run()", capture_output=True)
+    @cleair.observe(name="run()", capture_output=True, attributes=cleair.kind.AGENT)
     def run(self, user_input: str) -> str:
-        with cleair.span("llm", attributes={"gen_ai.request.model": "unknown", "session.id": "session-1",},):
+        with cleair.span("llm", attributes=cleair.kind.TOOL):
             time.sleep(1) # Sleep in order to make streaming visible when using terminal_stream=True
             if user_input == "boom":
                 raise RuntimeError("synthetic llm failure")
             return "Hello, how can I help you?"
 
 
-@cleair.observe(name="main()", capture_output=True)
+@cleair.observe(name="main()", capture_output=True, attributes=cleair.kind.AGENT)
 def main() -> None:
     for _ in range(2):
         result = Agent().run("hello")

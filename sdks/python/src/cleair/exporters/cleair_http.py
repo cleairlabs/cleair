@@ -21,10 +21,11 @@ from opentelemetry.sdk.trace import SpanProcessor
 
 
 def _str_attr(attributes: object, key: str, default: str = "") -> str:
-    if not isinstance(attributes, dict):
+    try:
+        value = attributes.get(key)  # type: ignore[union-attr]
+        return str(value) if value is not None else default
+    except AttributeError:
         return default
-    value = attributes.get(key)
-    return str(value) if value is not None else default
 
 
 class CleairHttpSpanProcessor(SpanProcessor):

@@ -1,3 +1,4 @@
+from cleair import kind
 from cleair._config import CleairConfig
 from cleair._core import (
     Adapter,
@@ -22,4 +23,5 @@ __all__ = [
     "trace_call",
     "observe",
     "CleairConsoleSpanExporter",
+    "kind",
 ]
