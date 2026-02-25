@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { TraceTree, kindColors } from "./components/TraceTree";
+import { useEffect, useState } from "react";
+import { TraceTree } from "./components/TraceTree";
 import { agentRagRunEvents } from "./data/agentRagRunEvents";
 import { applyFlowGraphEvent, countNodesByStatus, createEmptyFlowGraph, formatDuration } from "./flowGraph";
+import { kindColors } from "./kinds";
 import type { FlowGraph, FlowNode } from "./types";
 
 const DEMO_RUN_ID = "run-retrieval-001";
@@ -25,11 +26,6 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, [isPlaying, nextEventIndex]);
 
-  useEffect(() => {
-    if (selectedNodeId && flowGraph.nodesById[selectedNodeId]) return;
-    setSelectedNodeId(flowGraph.nodeIdsInOrder[0] ?? null);
-  }, [flowGraph, selectedNodeId]);
-
   function resetRun() {
     setFlowGraph(createEmptyFlowGraph(DEMO_RUN_ID, DEMO_RUN_LABEL));
     setSelectedNodeId(null);
@@ -37,10 +33,17 @@ export default function App() {
     setIsPlaying(true);
   }
 
-  const selectedNode: FlowNode | null = selectedNodeId ? (flowGraph.nodesById[selectedNodeId] ?? null) : null;
-  const doneCount = useMemo(() => countNodesByStatus(flowGraph, "done"), [flowGraph]);
-  const errorCount = useMemo(() => countNodesByStatus(flowGraph, "error"), [flowGraph]);
-  const totalCount = flowGraph.nodeIdsInOrder.length;
+  // If the user's selection is gone from the graph (or nothing selected yet), fall back to the first node.
+  const resolvedSelectedNodeId = (selectedNodeId !== null && flowGraph.nodesById[selectedNodeId] !== undefined)
+    ? selectedNodeId
+    : (flowGraph.nodeIdsInOrder[0] ?? null);
+
+  const selectedNode: FlowNode | null = resolvedSelectedNodeId
+    ? (flowGraph.nodesById[resolvedSelectedNodeId] ?? null)
+    : null;
+
+  const doneCount = countNodesByStatus(flowGraph, "done");
+  const errorCount = countNodesByStatus(flowGraph, "error");
 
   return (
     <main className="app-layout">
@@ -55,7 +58,7 @@ export default function App() {
             <button type="button" onClick={resetRun}>↺</button>
           </div>
         </header>
-        <TraceTree flowGraph={flowGraph} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />
+        <TraceTree flowGraph={flowGraph} selectedNodeId={resolvedSelectedNodeId} onSelectNode={setSelectedNodeId} />
       </section>
 
       <section className="panel details-panel">
@@ -94,7 +97,7 @@ export default function App() {
         </div>
         <footer className="run-summary">
           <span className="run-summary-item">{flowGraph.runId}</span>
-          <span className="run-summary-item">{doneCount}/{totalCount} done</span>
+          <span className="run-summary-item">{doneCount}/{flowGraph.nodeIdsInOrder.length} done</span>
           {errorCount > 0 && <span className="run-summary-item run-summary-error">{errorCount} error{errorCount !== 1 ? "s" : ""}</span>}
           {flowGraph.isCompleted && <span className="run-summary-item run-summary-complete">complete</span>}
         </footer>

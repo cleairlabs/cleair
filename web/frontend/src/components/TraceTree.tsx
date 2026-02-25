@@ -1,4 +1,5 @@
-import type React from "react";
+import type { CSSProperties, ReactElement } from "react";
+import { kindColors } from "../kinds";
 import { formatDuration } from "../flowGraph";
 import type { FlowGraph, FlowNode, FlowNodeKind, FlowNodeStatus } from "../types";
 
@@ -15,7 +16,7 @@ type TreeEntry = {
   isLastChild: boolean;
   /**
    * ancestorContinues[i] = does the ancestor at depth i have more siblings below it?
-   * Used in rendering: column j (a pass-through column) draws │ when ancestorContinues[j+1] is true.
+   * Used in rendering: column j (pass-through) draws │ when ancestorContinues[j+1] is true.
    */
   ancestorContinues: boolean[];
 };
@@ -55,12 +56,6 @@ function buildTreeEntries(graph: FlowGraph): TreeEntry[] {
   return entries;
 }
 
-export const kindColors: Record<FlowNodeKind, string> = {
-  agent: "#7c3aed",
-  rag: "#2563eb",
-  tool: "#c2410c",
-};
-
 /** Sparkle — represents intelligence and orchestration. */
 function AgentIcon() {
   return (
@@ -90,7 +85,7 @@ function ToolIcon() {
   );
 }
 
-const kindIcons: Record<FlowNodeKind, () => React.ReactElement> = {
+const kindIcons: Record<FlowNodeKind, () => ReactElement> = {
   agent: AgentIcon,
   rag: RagIcon,
   tool: ToolIcon,
@@ -134,7 +129,7 @@ function TraceRow({ entry, isSelected, onSelect }: { entry: TreeEntry; isSelecte
     <button
       type="button"
       className={`trace-row${isSelected ? " trace-row-selected" : ""}`}
-      style={{ "--kind-color": kindColors[node.kind] } as React.CSSProperties}
+      style={{ "--kind-color": kindColors[node.kind] } as CSSProperties}
       onClick={onSelect}
     >
       <TreeConnectors depth={depth} isLastChild={isLastChild} ancestorContinues={ancestorContinues} />
