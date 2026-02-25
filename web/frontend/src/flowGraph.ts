@@ -10,7 +10,7 @@ export function applyFlowGraphEvent(graph: FlowGraph, event: FlowGraphEvent): Fl
       return createEmptyFlowGraph(event.runId, event.runLabel);
     case "node_added": {
       if (graph.nodesById[event.node.id]) return graph;
-      const newNode: FlowNode = { ...event.node, status: "idle", durationMs: null };
+      const newNode: FlowNode = { ...event.node, status: "idle", durationMs: null, output: null };
       return {
         ...graph,
         nodesById: { ...graph.nodesById, [newNode.id]: newNode },
@@ -30,7 +30,7 @@ export function applyFlowGraphEvent(graph: FlowGraph, event: FlowGraphEvent): Fl
       if (!node) return graph;
       return {
         ...graph,
-        nodesById: { ...graph.nodesById, [event.nodeId]: { ...node, durationMs: event.durationMs } },
+        nodesById: { ...graph.nodesById, [event.nodeId]: { ...node, durationMs: event.durationMs, output: event.output ?? null } },
       };
     }
     case "run_completed":

@@ -315,6 +315,18 @@ body {
   font-size: 13px;
 }
 
+.detail-output {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* ── Run summary footer ─────────────────────────────────────────────── */
 
 .run-summary {

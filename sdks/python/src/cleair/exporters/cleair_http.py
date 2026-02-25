@@ -81,9 +81,21 @@ class CleairHttpSpanProcessor(SpanProcessor):
         status = "error" if error else "done"
         duration_ms = max(0, ((span.end_time or 0) - (span.start_time or 0)) // 1_000_000)
 
+        output: str | None = None
+        for span_event in span.events or []:
+            if span_event.name == "function.output":
+                raw = (span_event.attributes or {}).get("value")
+                if raw is not None:
+                    output = str(raw)
+                break
+
+        finished: dict = {"type": "node_finished", "nodeId": span_id, "durationMs": duration_ms}
+        if output is not None:
+            finished["output"] = output
+
         events: list[dict] = [
             {"type": "node_status_changed", "nodeId": span_id, "status": status},
-            {"type": "node_finished", "nodeId": span_id, "durationMs": duration_ms},
+            finished,
         ]
         if is_root:
             events.append({"type": "run_completed"})
