@@ -1,42 +1,54 @@
 import { useEffect, useState } from "react";
 import { TraceTree } from "./components/TraceTree";
-import { agentRagRunEvents } from "./data/agentRagRunEvents";
 import { applyFlowGraphEvent, countNodesByStatus, createEmptyFlowGraph, formatDuration } from "./flowGraph";
 import { kindColors } from "./kinds";
-import type { FlowGraph, FlowNode } from "./types";
+import type { FlowGraph, FlowGraphEvent, FlowNode } from "./types";
 
-const DEMO_RUN_ID = "run-retrieval-001";
-const DEMO_RUN_LABEL = "RetrievalAgent";
-const EVENT_REPLAY_INTERVAL_MS = 350;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:8000";
+const EMPTY_RUN_ID = "—";
+const EMPTY_RUN_LABEL = "Waiting for trace…";
+
+type ConnectionStatus = "connecting" | "connected" | "offline";
+
+function ConnectionIndicator({ status }: { status: ConnectionStatus }) {
+  return (
+    <span className={`connection-indicator connection-${status}`}>
+      {status === "connecting" && "connecting"}
+      {status === "connected" && "live"}
+      {status === "offline" && "offline"}
+    </span>
+  );
+}
 
 export default function App() {
-  const [flowGraph, setFlowGraph] = useState<FlowGraph>(() => createEmptyFlowGraph(DEMO_RUN_ID, DEMO_RUN_LABEL));
+  const [flowGraph, setFlowGraph] = useState<FlowGraph>(() =>
+    createEmptyFlowGraph(EMPTY_RUN_ID, EMPTY_RUN_LABEL)
+  );
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [nextEventIndex, setNextEventIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
 
   useEffect(() => {
-    if (!isPlaying || nextEventIndex >= agentRagRunEvents.length) return;
-    const timer = window.setInterval(() => {
-      const event = agentRagRunEvents[nextEventIndex];
-      if (!event) { window.clearInterval(timer); return; }
+    const source = new EventSource(`${BACKEND_URL}/runs/latest/stream`);
+
+    source.onopen = () => setConnectionStatus("connected");
+
+    source.onmessage = (messageEvent) => {
+      const event = JSON.parse(messageEvent.data as string) as FlowGraphEvent;
+      if (event.type === "run_started") setSelectedNodeId(null);
       setFlowGraph((prev) => applyFlowGraphEvent(prev, event));
-      setNextEventIndex((prev) => prev + 1);
-    }, EVENT_REPLAY_INTERVAL_MS);
-    return () => window.clearInterval(timer);
-  }, [isPlaying, nextEventIndex]);
+    };
 
-  function resetRun() {
-    setFlowGraph(createEmptyFlowGraph(DEMO_RUN_ID, DEMO_RUN_LABEL));
-    setSelectedNodeId(null);
-    setNextEventIndex(0);
-    setIsPlaying(true);
-  }
+    source.onerror = () => setConnectionStatus("offline");
+    // Do not call source.close() on error — the browser auto-reconnects.
 
-  // If the user's selection is gone from the graph (or nothing selected yet), fall back to the first node.
-  const resolvedSelectedNodeId = (selectedNodeId !== null && flowGraph.nodesById[selectedNodeId] !== undefined)
-    ? selectedNodeId
-    : (flowGraph.nodeIdsInOrder[0] ?? null);
+    return () => source.close();
+  }, []);
+
+  // Fall back to the first node when nothing is selected or the selection disappears.
+  const resolvedSelectedNodeId =
+    selectedNodeId !== null && flowGraph.nodesById[selectedNodeId] !== undefined
+      ? selectedNodeId
+      : (flowGraph.nodeIdsInOrder[0] ?? null);
 
   const selectedNode: FlowNode | null = resolvedSelectedNodeId
     ? (flowGraph.nodesById[resolvedSelectedNodeId] ?? null)
@@ -52,13 +64,13 @@ export default function App() {
           <span className="panel-label">Trace</span>
           <span className="panel-header-title">{flowGraph.runLabel}</span>
           <div className="spacer" />
-          <div className="controls">
-            <button type="button" onClick={() => setIsPlaying(true)} disabled={isPlaying}>▶</button>
-            <button type="button" onClick={() => setIsPlaying(false)} disabled={!isPlaying}>⏸</button>
-            <button type="button" onClick={resetRun}>↺</button>
-          </div>
+          <ConnectionIndicator status={connectionStatus} />
         </header>
-        <TraceTree flowGraph={flowGraph} selectedNodeId={resolvedSelectedNodeId} onSelectNode={setSelectedNodeId} />
+        {flowGraph.nodeIdsInOrder.length === 0 ? (
+          <p className="trace-empty">No trace data yet. Run your agent to see a trace here.</p>
+        ) : (
+          <TraceTree flowGraph={flowGraph} selectedNodeId={resolvedSelectedNodeId} onSelectNode={setSelectedNodeId} />
+        )}
       </section>
 
       <section className="panel details-panel">

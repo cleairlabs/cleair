@@ -41,8 +41,14 @@ def init(config: CleairConfig | None = None) -> None:
             from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
             exporter = OTLPSpanExporter(endpoint=resolved_config.otlp_http_endpoint)
             provider.add_span_processor(BatchSpanProcessor(exporter))
+        elif resolved_config.exporter == "cleair_http":
+            from cleair.exporters.cleair_http import CleairHttpSpanProcessor
+            provider.add_span_processor(CleairHttpSpanProcessor(
+                endpoint=resolved_config.cleair_http_endpoint,
+                service_name=resolved_config.service_name,
+            ))
         else:
-            raise ValueError(f"Unknown exporter: {resolved_config.exporter!r} (use 'otlp_http', 'console', or 'terminal')")
+            raise ValueError(f"Unknown exporter: {resolved_config.exporter!r} (use 'otlp_http', 'cleair_http', 'console', or 'terminal')")
 
         otel_trace.set_tracer_provider(provider)
         _initialized = True
@@ -56,10 +62,7 @@ def _tracer():
 @contextmanager
 def span(name: str, *, attributes: dict[str, str | int | float | bool] | None = None):
     tracer = _tracer()
-    with tracer.start_as_current_span(name) as span_handle:
-        if attributes:
-            for attribute_name, attribute_value in attributes.items():
-                span_handle.set_attribute(attribute_name, attribute_value)
+    with tracer.start_as_current_span(name, attributes=attributes) as span_handle:
         try:
             yield span_handle
         except Exception as exception:

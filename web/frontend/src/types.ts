@@ -22,6 +22,7 @@ export type FlowGraph = {
 };
 
 export type FlowGraphEvent =
+  | { type: "run_started"; runId: string; runLabel: string }
   | { type: "node_added"; node: Omit<FlowNode, "status" | "durationMs"> }
   | { type: "node_status_changed"; nodeId: string; status: FlowNodeStatus }
   | { type: "node_finished"; nodeId: string; durationMs: number }

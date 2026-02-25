@@ -7,8 +7,9 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class CleairConfig:
     service_name: str = "cleair-app"
-    exporter: str = "otlp_http"  # "otlp_http", "console", or "terminal"
+    exporter: str = "otlp_http"  # "otlp_http", "cleair_http", "console", or "terminal"
     otlp_http_endpoint: str = "http://localhost:4318/v1/traces"
+    cleair_http_endpoint: str = "http://localhost:8000/v1/events"
     terminal_stream: bool = False
 
     @staticmethod
@@ -25,6 +26,9 @@ class CleairConfig:
             exporter=os.getenv("CLEAIR_EXPORTER", "otlp_http"),
             otlp_http_endpoint=os.getenv(
                 "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://localhost:4318/v1/traces"
+            ),
+            cleair_http_endpoint=os.getenv(
+                "CLEAIR_HTTP_ENDPOINT", "http://localhost:8000/v1/events"
             ),
             terminal_stream=CleairConfig._env_bool("CLEAIR_TERMINAL_STREAM", default=False),
         )

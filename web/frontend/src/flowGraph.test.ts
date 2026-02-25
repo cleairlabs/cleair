@@ -2,6 +2,19 @@ import { describe, expect, test } from "vitest";
 import { applyFlowGraphEvent, createEmptyFlowGraph, formatDuration } from "./flowGraph";
 
 describe("flow graph reducer", () => {
+  test("run_started resets graph to a new empty graph", () => {
+    let graph = createEmptyFlowGraph("old-run", "OldAgent");
+    graph = applyFlowGraphEvent(graph, {
+      type: "node_added",
+      node: { id: "x", parentId: null, label: "X", subtitle: "", kind: "agent", whatDescription: "", whyDescription: "" },
+    });
+    graph = applyFlowGraphEvent(graph, { type: "run_started", runId: "new-run", runLabel: "NewAgent" });
+    expect(graph.runId).toBe("new-run");
+    expect(graph.runLabel).toBe("NewAgent");
+    expect(graph.nodeIdsInOrder).toHaveLength(0);
+    expect(graph.isCompleted).toBe(false);
+  });
+
   test("applies core events", () => {
     let graph = createEmptyFlowGraph("run-1", "test run");
 

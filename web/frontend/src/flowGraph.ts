@@ -6,6 +6,8 @@ export function createEmptyFlowGraph(runId: string, runLabel: string): FlowGraph
 
 export function applyFlowGraphEvent(graph: FlowGraph, event: FlowGraphEvent): FlowGraph {
   switch (event.type) {
+    case "run_started":
+      return createEmptyFlowGraph(event.runId, event.runLabel);
     case "node_added": {
       if (graph.nodesById[event.node.id]) return graph;
       const newNode: FlowNode = { ...event.node, status: "idle", durationMs: null };

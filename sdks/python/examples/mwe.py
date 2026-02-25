@@ -30,5 +30,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    cleair.init(CleairConfig(service_name="my-agent", exporter="terminal", terminal_stream=False))
+    cleair.init(CleairConfig(service_name="my-agent", exporter="cleair_http"))
     main()

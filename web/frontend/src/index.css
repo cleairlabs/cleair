@@ -67,33 +67,29 @@ body {
 
 .spacer { flex: 1; }
 
-/* ── Controls ───────────────────────────────────────────────────────── */
+/* ── Connection indicator ───────────────────────────────────────────── */
 
-.controls {
-  display: flex;
-  gap: 4px;
+.connection-indicator {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
-.controls button {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+.connection-connecting {
   color: var(--text-muted);
-  cursor: pointer;
-  font-size: 12px;
-  font-family: inherit;
-  padding: 4px 8px;
-  line-height: 1;
+  background: transparent;
 }
 
-.controls button:hover:not(:disabled) {
-  background: var(--surface-hover);
-  color: var(--text);
+.connection-connected {
+  color: var(--status-done);
+  background: rgba(34, 197, 94, 0.1);
 }
 
-.controls button:disabled {
-  opacity: 0.3;
-  cursor: default;
+.connection-offline {
+  color: var(--status-error);
+  background: rgba(239, 68, 68, 0.1);
 }
 
 /* ── Trace list ─────────────────────────────────────────────────────── */
@@ -102,6 +98,18 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 8px 0;
+}
+
+.trace-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.6;
 }
 
 .trace-row {
