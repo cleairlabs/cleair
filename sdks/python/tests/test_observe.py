@@ -108,7 +108,7 @@ def test_trace_call_capture_output_adds_event(monkeypatch) -> None:
         def __init__(self, span: FakeSpan) -> None:
             self.span = span
 
-        def start_as_current_span(self, _name: str) -> FakeSpan:
+        def start_as_current_span(self, _name: str, attributes=None) -> FakeSpan:
             return self.span
 
     span = FakeSpan()

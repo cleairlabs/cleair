@@ -113,4 +113,4 @@ def test_trace_async_with_kwargs(monkeypatch):
 
     result = asyncio.run(compute())
     assert result == 99
-    fake_tracer.start_as_current_span.assert_called_with("custom")
+    fake_tracer.start_as_current_span.assert_called_with("custom", attributes=None)
