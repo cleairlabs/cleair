@@ -1,97 +1,103 @@
 import { useEffect, useMemo, useState } from "react";
-import { FlowPane } from "./components/FlowPane";
+import { TraceTree, kindColors } from "./components/TraceTree";
 import { agentRagRunEvents } from "./data/agentRagRunEvents";
-import { applyFlowGraphEvent, countNodesByStatus, createEmptyFlowGraph } from "./flowGraph";
+import { applyFlowGraphEvent, countNodesByStatus, createEmptyFlowGraph, formatDuration } from "./flowGraph";
 import type { FlowGraph, FlowNode } from "./types";
 
-const runId = "run-agent-rag-001";
-const runLabel = "Agent + RAG";
-
-function createInitialFlowGraph(): FlowGraph {
-  return createEmptyFlowGraph(runId, runLabel);
-}
+const DEMO_RUN_ID = "run-retrieval-001";
+const DEMO_RUN_LABEL = "RetrievalAgent";
+const EVENT_REPLAY_INTERVAL_MS = 350;
 
 export default function App() {
-  const [flowGraph, setFlowGraph] = useState<FlowGraph>(createInitialFlowGraph);
+  const [flowGraph, setFlowGraph] = useState<FlowGraph>(() => createEmptyFlowGraph(DEMO_RUN_ID, DEMO_RUN_LABEL));
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [nextEventIndex, setNextEventIndex] = useState<number>(0);
-  const [isStreaming, setIsStreaming] = useState<boolean>(true);
+  const [nextEventIndex, setNextEventIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   useEffect(() => {
-    if (!isStreaming || nextEventIndex >= agentRagRunEvents.length) {
-      return;
-    }
-    const intervalHandle = window.setInterval(() => {
-      const nextFlowGraphEvent = agentRagRunEvents[nextEventIndex];
-      if (nextFlowGraphEvent === undefined) {
-        window.clearInterval(intervalHandle);
-        return;
-      }
-      setFlowGraph((previousFlowGraph) => applyFlowGraphEvent(previousFlowGraph, nextFlowGraphEvent));
-      setNextEventIndex((previousEventIndex) => previousEventIndex + 1);
-    }, 350);
-    return () => window.clearInterval(intervalHandle);
-  }, [isStreaming, nextEventIndex]);
+    if (!isPlaying || nextEventIndex >= agentRagRunEvents.length) return;
+    const timer = window.setInterval(() => {
+      const event = agentRagRunEvents[nextEventIndex];
+      if (!event) { window.clearInterval(timer); return; }
+      setFlowGraph((prev) => applyFlowGraphEvent(prev, event));
+      setNextEventIndex((prev) => prev + 1);
+    }, EVENT_REPLAY_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [isPlaying, nextEventIndex]);
 
   useEffect(() => {
-    if (selectedNodeId !== null && flowGraph.nodesById[selectedNodeId] !== undefined) {
-      return;
-    }
-    setSelectedNodeId(flowGraph.nodeIdsInRenderOrder[0] ?? null);
+    if (selectedNodeId && flowGraph.nodesById[selectedNodeId]) return;
+    setSelectedNodeId(flowGraph.nodeIdsInOrder[0] ?? null);
   }, [flowGraph, selectedNodeId]);
 
-  const selectedNode: FlowNode | null = selectedNodeId === null ? null : flowGraph.nodesById[selectedNodeId] ?? null;
-  const doneCount = useMemo(() => countNodesByStatus(flowGraph, "done"), [flowGraph]);
-  const warningCount = useMemo(() => countNodesByStatus(flowGraph, "warn"), [flowGraph]);
-  const errorCount = useMemo(() => countNodesByStatus(flowGraph, "error"), [flowGraph]);
-
-  function resetRun(): void {
-    setFlowGraph(createInitialFlowGraph());
+  function resetRun() {
+    setFlowGraph(createEmptyFlowGraph(DEMO_RUN_ID, DEMO_RUN_LABEL));
     setSelectedNodeId(null);
     setNextEventIndex(0);
-    setIsStreaming(true);
+    setIsPlaying(true);
   }
+
+  const selectedNode: FlowNode | null = selectedNodeId ? (flowGraph.nodesById[selectedNodeId] ?? null) : null;
+  const doneCount = useMemo(() => countNodesByStatus(flowGraph, "done"), [flowGraph]);
+  const errorCount = useMemo(() => countNodesByStatus(flowGraph, "error"), [flowGraph]);
+  const totalCount = flowGraph.nodeIdsInOrder.length;
 
   return (
     <main className="app-layout">
-      <FlowPane flowGraph={flowGraph} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />
       <section className="panel">
         <header className="panel-header">
-          <h2 className="panel-title">Details</h2>
+          <span className="panel-label">Trace</span>
+          <span className="panel-header-title">{flowGraph.runLabel}</span>
+          <div className="spacer" />
+          <div className="controls">
+            <button type="button" onClick={() => setIsPlaying(true)} disabled={isPlaying}>▶</button>
+            <button type="button" onClick={() => setIsPlaying(false)} disabled={!isPlaying}>⏸</button>
+            <button type="button" onClick={resetRun}>↺</button>
+          </div>
         </header>
-        <div className="details">
-          <div className="details-controls">
-            <button type="button" onClick={() => setIsStreaming(true)} disabled={isStreaming}>
-              Start
-            </button>
-            <button type="button" onClick={() => setIsStreaming(false)} disabled={!isStreaming}>
-              Pause
-            </button>
-            <button type="button" onClick={resetRun}>
-              Reset
-            </button>
-          </div>
-          <div className="detail-card">
-            <h3>Run</h3>
-            <p>{flowGraph.runLabel}</p>
-            <p className="muted">{flowGraph.runId}</p>
-          </div>
-          <div className="detail-card">
-            <h3>Status</h3>
-            <p>
-              {doneCount}/{flowGraph.nodeIdsInRenderOrder.length} done
-            </p>
-            <p className="muted">warn={warningCount}, error={errorCount}, complete={String(flowGraph.isCompleted)}</p>
-          </div>
-          <div className="detail-card">
-            <h3>What</h3>
-            <p>{selectedNode?.whatDescription ?? "Select a step"}</p>
-          </div>
-          <div className="detail-card">
-            <h3>Why</h3>
-            <p>{selectedNode?.whyDescription ?? "Select a step"}</p>
-          </div>
+        <TraceTree flowGraph={flowGraph} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />
+      </section>
+
+      <section className="panel details-panel">
+        <header className="panel-header">
+          <span className="panel-label">Details</span>
+        </header>
+        <div className="details-content">
+          {selectedNode ? (
+            <>
+              <div className="detail-section">
+                <span className="detail-label">Step</span>
+                <div className="detail-step-name">
+                  <span className="detail-kind-dot" style={{ background: kindColors[selectedNode.kind] }} />
+                  <span className="detail-value">{selectedNode.label}</span>
+                </div>
+                <span className="detail-value detail-muted">{selectedNode.subtitle}</span>
+              </div>
+              {selectedNode.durationMs !== null && (
+                <div className="detail-section">
+                  <span className="detail-label">Duration</span>
+                  <span className="detail-value">{formatDuration(selectedNode.durationMs)}</span>
+                </div>
+              )}
+              <div className="detail-section">
+                <span className="detail-label">What</span>
+                <p className="detail-body">{selectedNode.whatDescription}</p>
+              </div>
+              <div className="detail-section">
+                <span className="detail-label">Why</span>
+                <p className="detail-body">{selectedNode.whyDescription}</p>
+              </div>
+            </>
+          ) : (
+            <p className="detail-empty">Select a step to inspect it.</p>
+          )}
         </div>
+        <footer className="run-summary">
+          <span className="run-summary-item">{flowGraph.runId}</span>
+          <span className="run-summary-item">{doneCount}/{totalCount} done</span>
+          {errorCount > 0 && <span className="run-summary-item run-summary-error">{errorCount} error{errorCount !== 1 ? "s" : ""}</span>}
+          {flowGraph.isCompleted && <span className="run-summary-item run-summary-complete">complete</span>}
+        </footer>
       </section>
     </main>
   );

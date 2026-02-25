@@ -1,63 +1,45 @@
-import type { FlowEdge, FlowGraph, FlowGraphEvent, FlowNode, FlowNodeStatus } from "./types";
-
-function createFlowEdgeId(fromNodeId: string, toNodeId: string): string {
-  return `${fromNodeId}->${toNodeId}`;
-}
-
-function createNodeWithIdleStatus(node: Omit<FlowNode, "status">): FlowNode {
-  return { ...node, status: "idle" };
-}
+import type { FlowGraph, FlowGraphEvent, FlowNode, FlowNodeStatus } from "./types";
 
 export function createEmptyFlowGraph(runId: string, runLabel: string): FlowGraph {
-  return {
-    runId,
-    runLabel,
-    nodesById: {},
-    nodeIdsInRenderOrder: [],
-    flowEdges: [],
-    isCompleted: false
-  };
+  return { runId, runLabel, nodesById: {}, nodeIdsInOrder: [], isCompleted: false };
 }
 
-export function applyFlowGraphEvent(flowGraph: FlowGraph, flowGraphEvent: FlowGraphEvent): FlowGraph {
-  if (flowGraphEvent.type === "node_added") {
-    const nodeWithIdleStatus = createNodeWithIdleStatus(flowGraphEvent.node);
-    if (flowGraph.nodesById[nodeWithIdleStatus.id] !== undefined) {
-      return flowGraph;
+export function applyFlowGraphEvent(graph: FlowGraph, event: FlowGraphEvent): FlowGraph {
+  switch (event.type) {
+    case "node_added": {
+      if (graph.nodesById[event.node.id]) return graph;
+      const newNode: FlowNode = { ...event.node, status: "idle", durationMs: null };
+      return {
+        ...graph,
+        nodesById: { ...graph.nodesById, [newNode.id]: newNode },
+        nodeIdsInOrder: [...graph.nodeIdsInOrder, newNode.id],
+      };
     }
-    return {
-      ...flowGraph,
-      nodesById: { ...flowGraph.nodesById, [nodeWithIdleStatus.id]: nodeWithIdleStatus },
-      nodeIdsInRenderOrder: [...flowGraph.nodeIdsInRenderOrder, nodeWithIdleStatus.id]
-    };
-  }
-
-  if (flowGraphEvent.type === "edge_added") {
-    const flowEdgeId = createFlowEdgeId(flowGraphEvent.edge.fromNodeId, flowGraphEvent.edge.toNodeId);
-    if (flowGraph.flowEdges.some((flowEdge) => flowEdge.id === flowEdgeId)) {
-      return flowGraph;
+    case "node_status_changed": {
+      const node = graph.nodesById[event.nodeId];
+      if (!node || node.status === event.status) return graph;
+      return {
+        ...graph,
+        nodesById: { ...graph.nodesById, [event.nodeId]: { ...node, status: event.status } },
+      };
     }
-    const flowEdgeToAdd: FlowEdge = { id: flowEdgeId, ...flowGraphEvent.edge };
-    return { ...flowGraph, flowEdges: [...flowGraph.flowEdges, flowEdgeToAdd] };
-  }
-
-  if (flowGraphEvent.type === "node_status_changed") {
-    const existingFlowNode = flowGraph.nodesById[flowGraphEvent.nodeId];
-    if (existingFlowNode === undefined || existingFlowNode.status === flowGraphEvent.status) {
-      return flowGraph;
+    case "node_finished": {
+      const node = graph.nodesById[event.nodeId];
+      if (!node) return graph;
+      return {
+        ...graph,
+        nodesById: { ...graph.nodesById, [event.nodeId]: { ...node, durationMs: event.durationMs } },
+      };
     }
-    return {
-      ...flowGraph,
-      nodesById: {
-        ...flowGraph.nodesById,
-        [flowGraphEvent.nodeId]: { ...existingFlowNode, status: flowGraphEvent.status }
-      }
-    };
+    case "run_completed":
+      return { ...graph, isCompleted: true };
   }
-
-  return { ...flowGraph, isCompleted: true };
 }
 
-export function countNodesByStatus(flowGraph: FlowGraph, status: FlowNodeStatus): number {
-  return flowGraph.nodeIdsInRenderOrder.filter((nodeId) => flowGraph.nodesById[nodeId]?.status === status).length;
+export function countNodesByStatus(graph: FlowGraph, status: FlowNodeStatus): number {
+  return graph.nodeIdsInOrder.filter((id) => graph.nodesById[id]?.status === status).length;
+}
+
+export function formatDuration(ms: number): string {
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(2)}s`;
 }
