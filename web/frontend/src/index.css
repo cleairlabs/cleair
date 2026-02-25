@@ -1,0 +1,172 @@
+:root {
+  --background: #f2f5f1;
+  --surface: #ffffff;
+  --line: #d8dfd7;
+  --text: #1b221d;
+  --muted: #667168;
+  --idle: #f8faf7;
+  --running: #e9f2ff;
+  --done: #edf7f1;
+  --warn: #fcf4e8;
+  --error: #fdeeed;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.app-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 14px;
+  padding: 14px;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.panel-header {
+  border-bottom: 1px solid var(--line);
+  padding: 10px 12px;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.flow-canvas {
+  position: relative;
+  min-height: 760px;
+  overflow: auto;
+}
+
+.flow-edge {
+  position: absolute;
+  height: 2px;
+  background: #cad6cd;
+  transform-origin: left center;
+}
+
+.flow-node {
+  position: absolute;
+  width: 200px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--idle);
+  padding: 10px;
+  cursor: pointer;
+}
+
+.flow-node-selected {
+  outline: 2px solid #82af9b;
+}
+
+.flow-node-idle {
+  background: var(--idle);
+}
+
+.flow-node-running {
+  background: var(--running);
+}
+
+.flow-node-done {
+  background: var(--done);
+}
+
+.flow-node-warn {
+  background: var(--warn);
+}
+
+.flow-node-error {
+  background: var(--error);
+}
+
+.flow-node-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.flow-node-kind-chip {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.flow-node-subtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.details {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.details-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.details-controls button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.details-controls button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.detail-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8faf7;
+  padding: 10px;
+}
+
+.detail-card h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detail-card p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+}

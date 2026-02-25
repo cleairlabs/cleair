@@ -20,9 +20,6 @@ The web area should stay separate from SDKs so both can evolve independently.
 7. Add docs, tests, and developer scripts for local startup across frontend and backend.
 
 
-
-## TODO
-
 - [ ] Define a minimal trace graph event schema (`node_added`, `edge_added`, `node_status_changed`, `run_completed`).
 - [ ] Scaffold `frontend/` React app shell with Flow pane + right detail pane.
 - [ ] Implement static graph rendering with clickable nodes and selection state.
