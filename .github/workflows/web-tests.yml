@@ -3,14 +3,8 @@ name: web-tests
 on:
   push:
     branches: [main]
-    paths:
-      - "web/frontend/**"
-      - ".github/workflows/web-tests.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "web/frontend/**"
-      - ".github/workflows/web-tests.yml"
 
 jobs:
   frontend:
