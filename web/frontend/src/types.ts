@@ -14,7 +14,7 @@ export type FlowNode = {
   whyDescription: string;
 };
 
-export type FlowGraph = {
+export type TraceTreeState = {
   runId: string;
   runLabel: string;
   nodesById: Record<string, FlowNode>;
@@ -22,7 +22,7 @@ export type FlowGraph = {
   isCompleted: boolean;
 };
 
-export type FlowGraphEvent =
+export type TraceTreeEvent =
   | { type: "run_started"; runId: string; runLabel: string }
   | { type: "node_added"; node: Omit<FlowNode, "status" | "durationMs" | "output"> }
   | { type: "node_status_changed"; nodeId: string; status: FlowNodeStatus }

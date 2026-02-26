@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { TraceTree } from "./components/TraceTree";
-import { applyFlowGraphEvent, countNodesByStatus, createEmptyFlowGraph, formatDuration } from "./flowGraph";
+import { applyTraceTreeEvent, countNodesByStatus, createEmptyTraceTree, formatDuration } from "./traceTree";
 import { kindColors } from "./kinds";
-import type { FlowGraph, FlowGraphEvent, FlowNode } from "./types";
+import type { TraceTreeState, TraceTreeEvent, FlowNode } from "./types";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:8000";
 const EMPTY_RUN_ID = "—";
@@ -21,8 +21,8 @@ function ConnectionIndicator({ status }: { status: ConnectionStatus }) {
 }
 
 export default function App() {
-  const [flowGraph, setFlowGraph] = useState<FlowGraph>(() =>
-    createEmptyFlowGraph(EMPTY_RUN_ID, EMPTY_RUN_LABEL)
+  const [traceTree, setTraceTree] = useState<TraceTreeState>(() =>
+    createEmptyTraceTree(EMPTY_RUN_ID, EMPTY_RUN_LABEL)
   );
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
@@ -33,9 +33,9 @@ export default function App() {
     source.onopen = () => setConnectionStatus("connected");
 
     source.onmessage = (messageEvent) => {
-      const event = JSON.parse(messageEvent.data as string) as FlowGraphEvent;
+      const event = JSON.parse(messageEvent.data as string) as TraceTreeEvent;
       if (event.type === "run_started") setSelectedNodeId(null);
-      setFlowGraph((prev) => applyFlowGraphEvent(prev, event));
+      setTraceTree((prev) => applyTraceTreeEvent(prev, event));
     };
 
     source.onerror = () => setConnectionStatus("offline");
@@ -46,30 +46,30 @@ export default function App() {
 
   // Fall back to the first node when nothing is selected or the selection disappears.
   const resolvedSelectedNodeId =
-    selectedNodeId !== null && flowGraph.nodesById[selectedNodeId] !== undefined
+    selectedNodeId !== null && traceTree.nodesById[selectedNodeId] !== undefined
       ? selectedNodeId
-      : (flowGraph.nodeIdsInOrder[0] ?? null);
+      : (traceTree.nodeIdsInOrder[0] ?? null);
 
   const selectedNode: FlowNode | null = resolvedSelectedNodeId
-    ? (flowGraph.nodesById[resolvedSelectedNodeId] ?? null)
+    ? (traceTree.nodesById[resolvedSelectedNodeId] ?? null)
     : null;
 
-  const doneCount = countNodesByStatus(flowGraph, "done");
-  const errorCount = countNodesByStatus(flowGraph, "error");
+  const doneCount = countNodesByStatus(traceTree, "done");
+  const errorCount = countNodesByStatus(traceTree, "error");
 
   return (
     <main className="app-layout">
       <section className="panel">
         <header className="panel-header">
           <span className="panel-label">Trace</span>
-          <span className="panel-header-title">{flowGraph.runLabel}</span>
+          <span className="panel-header-title">{traceTree.runLabel}</span>
           <div className="spacer" />
           <ConnectionIndicator status={connectionStatus} />
         </header>
-        {flowGraph.nodeIdsInOrder.length === 0 ? (
+        {traceTree.nodeIdsInOrder.length === 0 ? (
           <p className="trace-empty">No trace data yet. Run your agent to see a trace here.</p>
         ) : (
-          <TraceTree flowGraph={flowGraph} selectedNodeId={resolvedSelectedNodeId} onSelectNode={setSelectedNodeId} />
+          <TraceTree traceTree={traceTree} selectedNodeId={resolvedSelectedNodeId} onSelectNode={setSelectedNodeId} />
         )}
       </section>
 
@@ -114,10 +114,10 @@ export default function App() {
           )}
         </div>
         <footer className="run-summary">
-          <span className="run-summary-item">{flowGraph.runId}</span>
-          <span className="run-summary-item">{doneCount}/{flowGraph.nodeIdsInOrder.length} done</span>
+          <span className="run-summary-item">{traceTree.runId}</span>
+          <span className="run-summary-item">{doneCount}/{traceTree.nodeIdsInOrder.length} done</span>
           {errorCount > 0 && <span className="run-summary-item run-summary-error">{errorCount} error{errorCount !== 1 ? "s" : ""}</span>}
-          {flowGraph.isCompleted && <span className="run-summary-item run-summary-complete">complete</span>}
+          {traceTree.isCompleted && <span className="run-summary-item run-summary-complete">complete</span>}
         </footer>
       </section>
     </main>

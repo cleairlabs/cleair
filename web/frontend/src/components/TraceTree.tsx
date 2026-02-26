@@ -1,10 +1,10 @@
 import type { CSSProperties, ReactElement } from "react";
 import { kindColors } from "../kinds";
-import { formatDuration } from "../flowGraph";
-import type { FlowGraph, FlowNode, FlowNodeKind, FlowNodeStatus } from "../types";
+import { formatDuration } from "../traceTree";
+import type { TraceTreeState, FlowNode, FlowNodeKind, FlowNodeStatus } from "../types";
 
 type TraceTreeProps = {
-  flowGraph: FlowGraph;
+  traceTree: TraceTreeState;
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string) => void;
 };
@@ -21,7 +21,7 @@ type TreeEntry = {
   ancestorContinues: boolean[];
 };
 
-function buildChildrenMap(graph: FlowGraph): Record<string, string[]> {
+function buildChildrenMap(graph: TraceTreeState): Record<string, string[]> {
   const childrenByParentId: Record<string, string[]> = {};
   for (const nodeId of graph.nodeIdsInOrder) {
     const node = graph.nodesById[nodeId];
@@ -34,7 +34,7 @@ function buildChildrenMap(graph: FlowGraph): Record<string, string[]> {
 }
 
 /** Depth-first traversal producing a flat list of nodes with tree metadata. */
-function buildTreeEntries(graph: FlowGraph): TreeEntry[] {
+function buildTreeEntries(graph: TraceTreeState): TreeEntry[] {
   const childrenByParentId = buildChildrenMap(graph);
   const rootNodeIds = childrenByParentId[""] ?? [];
   const entries: TreeEntry[] = [];
@@ -159,8 +159,8 @@ function TraceRow({ entry, isSelected, onSelect }: { entry: TreeEntry; isSelecte
 }
 
 /** Waterfall trace tree — renders the flow graph as an indented, hierarchical list. */
-export function TraceTree({ flowGraph, selectedNodeId, onSelectNode }: TraceTreeProps) {
-  const treeEntries = buildTreeEntries(flowGraph);
+export function TraceTree({ traceTree, selectedNodeId, onSelectNode }: TraceTreeProps) {
+  const treeEntries = buildTreeEntries(traceTree);
   return (
     <div className="trace-list">
       {treeEntries.map((entry) => (

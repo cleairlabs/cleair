@@ -1,13 +1,13 @@
-import type { FlowGraph, FlowGraphEvent, FlowNode, FlowNodeStatus } from "./types";
+import type { TraceTreeState, TraceTreeEvent, FlowNode, FlowNodeStatus } from "./types";
 
-export function createEmptyFlowGraph(runId: string, runLabel: string): FlowGraph {
+export function createEmptyTraceTree(runId: string, runLabel: string): TraceTreeState {
   return { runId, runLabel, nodesById: {}, nodeIdsInOrder: [], isCompleted: false };
 }
 
-export function applyFlowGraphEvent(graph: FlowGraph, event: FlowGraphEvent): FlowGraph {
+export function applyTraceTreeEvent(graph: TraceTreeState, event: TraceTreeEvent): TraceTreeState {
   switch (event.type) {
     case "run_started":
-      return createEmptyFlowGraph(event.runId, event.runLabel);
+      return createEmptyTraceTree(event.runId, event.runLabel);
     case "node_added": {
       if (graph.nodesById[event.node.id]) return graph;
       const newNode: FlowNode = { ...event.node, status: "idle", durationMs: null, output: null };
@@ -38,7 +38,7 @@ export function applyFlowGraphEvent(graph: FlowGraph, event: FlowGraphEvent): Fl
   }
 }
 
-export function countNodesByStatus(graph: FlowGraph, status: FlowNodeStatus): number {
+export function countNodesByStatus(graph: TraceTreeState, status: FlowNodeStatus): number {
   return graph.nodeIdsInOrder.filter((id) => graph.nodesById[id]?.status === status).length;
 }
 
