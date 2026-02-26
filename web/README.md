@@ -1,24 +1,53 @@
 # cleAIr Web
 
-This folder contains the web product surface for cleAIr.
-
 ## Structure
 
-- `frontend/` — React app for live trace visualization.
-- `backend/` — FastAPI service for trace ingestion and streaming *(not yet implemented)*.
+- `frontend/`: React trace UI
+- `backend/`: FastAPI ingest + SSE service
+
+## Backend
+
+## Endpoints
+
+- `POST /v1/traces`: OTLP/JSON trace ingestion
+- `POST /v1/events`: cleair-native event ingestion (streaming)
+- `GET /runs/latest/stream`: SSE stream of latest run events
+
+## Run
+
+```bash
+cd web/backend
+pip install -e .
+python -m cleair_backend.main
+```
+
+Runs at `http://localhost:8000`.
+
+## Python SDK
+
+```python
+cleair.init(CleairConfig(service_name="my-agent", exporter="cleair_http"))
+```
+
+Or via environment variables:
+
+```bash
+CLEAIR_EXPORTER=cleair_http python your_agent.py
+```
+
+Default `CLEAIR_HTTP_ENDPOINT` is `http://localhost:8000/v1/events`.
+Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` for OTLP mode (`/v1/traces`).
 
 ## Frontend
 
-A dark-themed trace viewer that renders agent execution as a hierarchical waterfall list, inspired by LangSmith's trace view.
+Stack: React 19, TypeScript, Vite, Vitest.
 
-**Stack:** React 19 · TypeScript · Vite · Vitest
-
-**Source layout:**
+Source layout:
 
 ```
 src/
-├── types.ts              — core data model (FlowNode, FlowGraph, FlowGraphEvent)
-├── flowGraph.ts          — pure event reducer + display utilities
+├── types.ts              — core data model (FlowNode, TraceTreeState, TraceTreeEvent)
+├── traceTree.ts          — pure event reducer + display utilities
 ├── kinds.ts              — visual config per node kind (colors)
 ├── App.tsx               — layout, playback state, details panel
 ├── index.css             — dark theme, tree connectors, layout
@@ -28,22 +57,16 @@ src/
     └── agentRagRunEvents.ts — demo event stream
 ```
 
-**Run locally:**
+Run:
 
 ```bash
-cd frontend
+cd web/frontend
 npm install
 npm run dev
 ```
 
-**Test:**
+Test:
 
 ```bash
 npm test
 ```
-
-## Architecture notes
-
-- The frontend event model (`node_added`, `node_status_changed`, `node_finished`, `run_completed`) is designed for direct streaming from the backend over WebSocket or SSE.
-- The `FlowGraph` state is built by applying events through a pure reducer (`applyFlowGraphEvent`), making it straightforward to connect to a real stream.
-- Node hierarchy is expressed via `parentId` (not explicit edges), which drives the tree layout automatically.
