@@ -2,11 +2,6 @@
 
 Explainable agent observability.
 
-## Demo
-
-![cleAIr trace UI demo](docs/media/cleair-demo.gif)
-
-_Real-time trace view from a running agent session._
 
 ## SDKs
 
@@ -39,6 +34,16 @@ def llm() -> None:
 def main() -> None:
     llm()
 ```
+
+
+
+
+## Demo
+
+![cleAIr trace UI demo](docs/media/cleair-demo.gif)
+
+_Real-time trace view from a running agent session._
+
 
 
 ## License

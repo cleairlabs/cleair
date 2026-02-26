@@ -123,15 +123,15 @@ def trace(function=None, /, *,
     def decorator(target_function):
         if inspect.iscoroutinefunction(target_function):
             @functools.wraps(target_function)
-            async def wrapped(*args, **kwargs):
+            async def wrapped_async(*args, **kwargs):
                 return await _trace_call_async(target_function, *args, span_name=span_name, attributes=attributes, 
                                                capture_output=capture_output, **kwargs)
-            return wrapped
+            return wrapped_async
 
         @functools.wraps(target_function)
-        def wrapped(*args, **kwargs):
+        def wrapped_sync(*args, **kwargs):
             return trace_call(target_function, *args, span_name=span_name, attributes=attributes, capture_output=capture_output, **kwargs)
-        return wrapped
+        return wrapped_sync
     if function is None: return decorator
     return decorator(function)
 
