@@ -74,8 +74,7 @@ async def _generate_sse(channel: TraceStore):
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=30)
                     yield f"data: {json.dumps(event)}\n\n"
-                    if event.get("type") == "run_completed":
-                        break
+                    if event.get("type") == "run_completed": break
                 except asyncio.TimeoutError:
                     yield ":\n\n"
         finally:
