@@ -1,9 +1,11 @@
 """cleAIr backend — trace ingestion and SSE streaming.
 
 Endpoints:
-  POST /v1/traces          — OTLP/JSON trace ingestion (batch, spans exported on completion)
-  POST /v1/events          — Cleair-native event ingestion (streaming, start + end events)
-  GET  /runs/latest/stream — SSE stream of FlowGraphEvents for the latest run
+  POST /channels                  — Create a new channel, returns {label, apiKey}
+  GET  /channels                  — List all channels
+  GET  /channels/{api_key}/stream — SSE stream for a channel's latest run
+  POST /v1/traces                 — OTLP/JSON trace ingestion (requires X-Channel-API-Key)
+  POST /v1/events                 — Cleair-native event ingestion (requires X-Channel-API-Key)
 """
 from __future__ import annotations
 
@@ -12,12 +14,15 @@ import json
 import logging
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from cleair_backend.otlp import otlp_payload_to_run_events
 from cleair_backend.store import TraceStore
+
+
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,12 +32,77 @@ store = TraceStore()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten when adding API-key auth
+    allow_origins=["*"],
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
 
+
+
+####
+# Helpers
+####
+def _resolve_channel(request: Request) -> TraceStore:
+    """Resolve the target TraceStore from X-Channel-API-Key, or raise HTTP error."""
+    api_key = request.headers.get("X-Channel-API-Key")
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing X-Channel-API-Key header")
+    channel = store.get_channel(api_key)
+    if channel is None:
+        raise HTTPException(status_code=404, detail="Unknown API key")
+    return channel
+
+
+async def _generate_sse(channel: TraceStore):
+    """Yield SSE-formatted events for a TraceStore, following its latest run."""
+    seen_run_ids: set[str] = set()
+    while True:
+        run_id = channel.get_latest_run_id()
+        if run_id is None or run_id in seen_run_ids:
+            yield ":\n\n"
+            await channel.wait_for_new_run()
+            continue
+        seen_run_ids.add(run_id)
+        run = channel.get_run(run_id)
+        if run is None: continue
+        queue = channel.subscribe(run_id)
+        try:
+            for event in list(run.events): yield f"data: {json.dumps(event)}\n\n"
+            if run.is_completed: continue
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=30)
+                    yield f"data: {json.dumps(event)}\n\n"
+                    if event.get("type") == "run_completed": break
+                except asyncio.TimeoutError:
+                    yield ":\n\n"
+        finally:
+            channel.unsubscribe(run_id, queue)
+
+
+
+
+#### API ####
+
+####
+# Channel management
+####
+@app.post("/channels", status_code=201)
+async def create_channel() -> dict:
+    """Create a new isolated channel. Returns its label and API key."""
+    label, api_key = store.create_channel()
+    return {"label": label, "apiKey": api_key}
+
+
+@app.get("/channels")
+async def list_channels() -> list[dict]:
+    """List all channels with their API keys."""
+    return store.list_channels()
+
+####
+# Trace ingestion
+####
 @app.post("/v1/traces", status_code=204)
 async def ingest_otlp_traces(request: Request) -> None:
     """Accept an OTLP/JSON ExportTraceServiceRequest.
@@ -40,16 +110,17 @@ async def ingest_otlp_traces(request: Request) -> None:
     Spans arrive only on completion, so the frontend will see all events for a
     span appear at once. Use /v1/events for real-time streaming.
     """
+    channel = _resolve_channel(request)
     payload = await request.json()
     for trace_id, service_name, span_events in otlp_payload_to_run_events(payload):
-        run = store.get_or_create_run(trace_id, service_name)
+        run = channel.get_or_create_run(trace_id, service_name)
         events_to_emit: list[dict] = []
         if not run.events:
             events_to_emit.append({"type": "run_started", "runId": trace_id, "runLabel": service_name})
         events_to_emit.extend(span_events)
-        store.append_events(trace_id, events_to_emit)
+        channel.append_events(trace_id, events_to_emit)
         if any(e.get("type") == "run_completed" for e in span_events):
-            store.mark_completed(trace_id)
+            channel.mark_completed(trace_id)
         logger.info("Ingested %d events for trace %s", len(events_to_emit), trace_id)
 
 
@@ -60,62 +131,29 @@ async def ingest_events(request: Request) -> None:
     Events arrive on both span start and span end, enabling real-time running state.
     Body: { "runId": str, "events": FlowGraphEvent[] }
     """
+    channel = _resolve_channel(request)
     body = await request.json()
     run_id: str = body["runId"]
     events: list[dict] = body["events"]
 
     run_label = next((e["runLabel"] for e in events if e.get("type") == "run_started"), None)
-    store.get_or_create_run(run_id, run_label or "unknown")
-    store.append_events(run_id, events)
+    channel.get_or_create_run(run_id, run_label or "unknown")
+    channel.append_events(run_id, events)
     if any(e.get("type") == "run_completed" for e in events):
-        store.mark_completed(run_id)
+        channel.mark_completed(run_id)
 
-
-@app.get("/runs/latest/stream")
-async def stream_latest_run() -> StreamingResponse:
-    """SSE stream that always follows the latest run.
-
-    When a new run starts it emits a run_started event which resets the frontend
-    graph; the browser reconnects automatically on disconnect.
-    """
-    async def generate():
-        seen_run_ids: set[str] = set()
-        while True:
-            run_id = store.get_latest_run_id()
-            if run_id is None or run_id in seen_run_ids:
-                yield ":\n\n"
-                await store.wait_for_new_run()
-                continue
-
-            seen_run_ids.add(run_id)
-            run = store.get_run(run_id)
-            if run is None:
-                continue
-
-            queue = store.subscribe(run_id)
-            try:
-                for event in list(run.events):
-                    yield f"data: {json.dumps(event)}\n\n"
-
-                if run.is_completed:
-                    continue
-
-                while True:
-                    try:
-                        event = await asyncio.wait_for(queue.get(), timeout=30)
-                        yield f"data: {json.dumps(event)}\n\n"
-                        if event.get("type") == "run_completed":
-                            break
-                    except asyncio.TimeoutError:
-                        yield ":\n\n"
-            finally:
-                store.unsubscribe(run_id, queue)
-
-    return StreamingResponse(
-        generate(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+####
+# SSE streaming
+####
+@app.get("/channels/{api_key}/stream")
+async def stream_channel(api_key: str) -> StreamingResponse:
+    """SSE stream that always follows the latest run in a channel."""
+    channel = store.get_channel(api_key)
+    if channel is None:
+        raise HTTPException(status_code=404, detail="Unknown API key")
+    return StreamingResponse(_generate_sse(channel),
+                             media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 def run() -> None:

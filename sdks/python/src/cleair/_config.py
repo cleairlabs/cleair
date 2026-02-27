@@ -10,6 +10,7 @@ class CleairConfig:
     exporter: str = "otlp_http"  # "otlp_http", "cleair_http", "console", or "terminal"
     otlp_http_endpoint: str = "http://localhost:4318/v1/traces"
     cleair_http_endpoint: str = "http://localhost:8000/v1/events"
+    cleair_api_key: str | None = None
     terminal_stream: bool = False
 
     @staticmethod
@@ -30,5 +31,6 @@ class CleairConfig:
             cleair_http_endpoint=os.getenv(
                 "CLEAIR_HTTP_ENDPOINT", "http://localhost:8000/v1/events"
             ),
+            cleair_api_key=os.getenv("CLEAIR_API_KEY"),
             terminal_stream=CleairConfig._env_bool("CLEAIR_TERMINAL_STREAM", default=False),
         )
