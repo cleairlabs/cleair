@@ -42,10 +42,17 @@ def init(config: CleairConfig | None = None) -> None:
             exporter = OTLPSpanExporter(endpoint=resolved_config.otlp_http_endpoint)
             provider.add_span_processor(BatchSpanProcessor(exporter))
         elif resolved_config.exporter == "cleair_http":
+            if not resolved_config.cleair_api_key:
+                raise ValueError(
+                    "cleair_api_key is required when using exporter='cleair_http'.\n"
+                    "Create a pane in the cleair UI and pass its key:\n"
+                    "  CleairConfig(exporter='cleair_http', cleair_api_key='<key>')\n"
+                    "or set the CLEAIR_API_KEY environment variable.")
             from cleair.exporters.cleair_http import CleairHttpSpanProcessor
             provider.add_span_processor(CleairHttpSpanProcessor(
                 endpoint=resolved_config.cleair_http_endpoint,
                 service_name=resolved_config.service_name,
+                api_key=resolved_config.cleair_api_key,
             ))
         else:
             raise ValueError(f"Unknown exporter: {resolved_config.exporter!r} (use 'otlp_http', 'cleair_http', 'console', or 'terminal')")

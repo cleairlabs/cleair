@@ -25,11 +25,105 @@ body {
   overflow: hidden;
 }
 
+.app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
 .app-layout {
   display: grid;
   grid-template-columns: 1fr 360px;
-  height: 100dvh;
+  flex: 1;
+  min-height: 0;
 }
+
+/* ── Tab bar ─────────────────────────────────────────────────────── */
+
+.tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tab {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tab:hover { background: var(--surface-hover); color: var(--text); }
+
+.tab-active {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.tab-add {
+  padding: 2px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tab-add:hover { background: var(--surface-hover); color: var(--text); }
+
+/* ── API key badge ───────────────────────────────────────────────── */
+
+.api-key-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.api-key-badge:hover { border-color: var(--text-muted); color: var(--text); }
+
+.api-key-label {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+}
+
+.api-key-copy { color: var(--text-muted); font-size: 10px; }
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.empty-state strong { color: var(--text); }
 
 /* ── Panels ─────────────────────────────────────────────────────────── */
 
@@ -349,12 +443,8 @@ body {
 /* ── Responsive ─────────────────────────────────────────────────────── */
 
 @media (max-width: 800px) {
-  .app-layout {
-    grid-template-columns: 1fr;
-    height: auto;
-    overflow: auto;
-  }
-
+  .app-root { height: auto; overflow: auto; }
+  .app-layout { grid-template-columns: 1fr; overflow: auto; }
   body { height: auto; overflow: auto; }
   .panel { height: 50dvh; }
 }

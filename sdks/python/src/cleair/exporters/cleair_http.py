@@ -36,9 +36,10 @@ def _str_attr(attributes: object, key: str, default: str = "") -> str:
 class CleairHttpSpanProcessor(SpanProcessor):
     """Posts FlowGraphEvents to the cleAIr backend on span start and end."""
 
-    def __init__(self, endpoint: str, service_name: str = "cleair-app") -> None:
+    def __init__(self, endpoint: str, service_name: str = "cleair-app", api_key: str | None = None) -> None:
         self._endpoint = endpoint
         self._service_name = service_name
+        self._api_key = api_key
 
 
     def on_start(self, span: Span, parent_context: Optional[Context] = None) -> None:
@@ -100,10 +101,13 @@ class CleairHttpSpanProcessor(SpanProcessor):
 
     def _post(self, run_id: str, events: list[dict]) -> None:
         body = json.dumps({"runId": run_id, "events": events}).encode()
+        headers: dict[str, str] = {"Content-Type": CONTENT_TYPE_HEADER}
+        if self._api_key:
+            headers["X-Channel-API-Key"] = self._api_key
         request = urllib.request.Request(
             self._endpoint,
             data=body,
-            headers={"Content-Type": CONTENT_TYPE_HEADER},
+            headers=headers,
             method="POST",
         )
         try:
