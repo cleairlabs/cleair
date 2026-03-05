@@ -56,25 +56,24 @@ function buildTreeEntries(graph: TraceTreeState): TreeEntry[] {
   return entries;
 }
 
-/** Three connected nodes — represents AI reasoning and neural networks. */
+/** Sparkle — represents a top-level trace. */
 function TraceIcon() {
   return (
-    <svg width="10" height="10" viewBox="0 0 10 10">
-      <line x1="5" y1="2" x2="2" y2="7.5" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="5" y1="2" x2="8" y2="7.5" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="2" y1="7.5" x2="8" y2="7.5" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
-      <circle cx="5" cy="2" r="1.5" fill="white" />
-      <circle cx="2" cy="7.5" r="1.5" fill="white" />
-      <circle cx="8" cy="7.5" r="1.5" fill="white" />
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="#000">
+      <path d="M5 0 L6.2 3.8 L10 5 L6.2 6.2 L5 10 L3.8 6.2 L0 5 L3.8 3.8 Z" />
     </svg>
   );
 }
 
-/** Sparkle — represents a top-level trace. */
+/** ... — represents AI/agent/robot. */
 function AgentIcon() {
   return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="white">
-      <path d="M5 0 L6.2 3.8 L10 5 L6.2 6.2 L5 10 L3.8 6.2 L0 5 L3.8 3.8 Z" />
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <line x1="6" y1="0.2" x2="6" y2="1.7" stroke="#fff" strokeWidth="1.1" strokeLinecap="round" />
+      <circle cx="6" cy="0.2" r="0.85" fill="#fff" />
+      <rect x="0.3" y="1.6" width="11.4" height="10.2" rx="1.8" fill="#fff" />
+      <circle cx="3.9" cy="6.4" r="1.05" fill="#000" />
+      <circle cx="8.1" cy="6.4" r="1.05" fill="#000" />
     </svg>
   );
 }
@@ -82,7 +81,15 @@ function AgentIcon() {
 /** Magnifying glass — represents search and retrieval. */
 function SearchIcon() {
   return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round">
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    >
       <circle cx="4.2" cy="4.2" r="2.8" />
       <line x1="6.2" y1="6.2" x2="9.5" y2="9.5" />
     </svg>
@@ -92,9 +99,28 @@ function SearchIcon() {
 /** Terminal prompt — represents function/tool execution. */
 function ToolIcon() {
   return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="1,2.5 4.5,5 1,7.5" />
       <line x1="5.5" y1="7.5" x2="9" y2="7.5" />
+    </svg>
+  );
+}
+
+/** Person silhouette — represents a human action. */
+function HumanIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+      <circle cx="5" cy="2.7" r="1.8" />
+      <path d="M1.8 9c0-2 1.6-3.5 3.2-3.5s3.2 1.5 3.2 3.5H1.8z" />
     </svg>
   );
 }
@@ -104,12 +130,13 @@ const kindIcons: Record<FlowNodeKind, () => ReactElement> = {
   agent: AgentIcon,
   search: SearchIcon,
   tool: ToolIcon,
+  human: HumanIcon,
 };
 
 function KindBadge({ kind }: { kind: FlowNodeKind }) {
   const Icon = kindIcons[kind];
   return (
-    <span className="kind-badge" style={{ background: kindColors[kind] }}>
+    <span className={`kind-badge kind-badge-${kind}`} style={{ background: kindColors[kind] }}>
       <Icon />
     </span>
   );
@@ -123,17 +150,28 @@ function StatusIcon({ status }: { status: FlowNodeStatus }) {
   return <span className="status-icon" />;
 }
 
+export function getConnectorClasses(
+  depth: number,
+  isLastChild: boolean,
+  ancestorContinues: boolean[]
+): string[] {
+  return Array.from({ length: depth }, (_, columnIndex) => {
+    const isImmediateConnector = columnIndex === depth - 1;
+    if (isImmediateConnector) {
+      return isLastChild ? "connector-last" : "connector-mid";
+    }
+    const ancestorAtThisColumnContinues = ancestorContinues[columnIndex + 1] ?? false;
+    return ancestorAtThisColumnContinues ? "connector-pass" : "connector-empty";
+  });
+}
+
 function TreeConnectors({ depth, isLastChild, ancestorContinues }: Omit<TreeEntry, "node">) {
+  const connectorClasses = getConnectorClasses(depth, isLastChild, ancestorContinues);
   return (
     <div className="tree-connectors">
-      {Array.from({ length: depth }, (_, columnIndex) => {
-        const isImmediateConnector = columnIndex === depth - 1;
-        if (isImmediateConnector) {
-          return <div key={columnIndex} className={isLastChild ? "connector-last" : "connector-mid"} />;
-        }
-        const ancestorAtThisColumnContinues = ancestorContinues[columnIndex + 1] ?? false;
-        return <div key={columnIndex} className={ancestorAtThisColumnContinues ? "connector-pass" : "connector-empty"} />;
-      })}
+      {connectorClasses.map((connectorClass, columnIndex) => (
+        <div key={columnIndex} className={connectorClass} />
+      ))}
     </div>
   );
 }
