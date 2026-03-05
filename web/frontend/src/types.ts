@@ -1,5 +1,5 @@
 export type FlowNodeStatus = "idle" | "running" | "done" | "warn" | "error";
-export type FlowNodeKind = "trace" | "agent" | "search" | "tool";
+export type FlowNodeKind = "trace" | "agent" | "search" | "tool" | "human";
 
 export type FlowNode = {
   id: string;

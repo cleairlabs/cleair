@@ -312,6 +312,8 @@ body {
   flex-shrink: 0;
 }
 
+.kind-badge-agent { color: #000; }
+
 /* ── Trace row contents ─────────────────────────────────────────────── */
 
 .trace-row-label {
