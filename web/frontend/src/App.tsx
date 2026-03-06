@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DetailsPanel } from "./components/DetailsPanel";
 import { TraceTree } from "./components/TraceTree";
 import { useTraceChannels } from "./hooks/useTraceChannels";
@@ -6,6 +6,16 @@ import { countNodesByStatus, createEmptyTraceTree } from "./traceTree";
 import type { FlowNode, TraceTreeState } from "./types";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:8000";
+
+function useTheme() {
+  const [dark, setDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  }, [dark]);
+
+  return { dark, toggle: () => setDark((d) => !d) };
+}
 const EMPTY_RUN_ID = "—";
 const EMPTY_RUN_LABEL = "Waiting for trace…";
 
@@ -47,6 +57,7 @@ function ApiKeyBadge({ apiKey }: { apiKey: string }) {
 }
 
 export default function App() {
+  const { dark, toggle: toggleTheme } = useTheme();
   const { panes, activePaneId, setActivePaneId, addPane, setSelectedNodeId } = useTraceChannels(BACKEND_URL);
 
   const activePane = panes.find((pane) => pane.id === activePaneId) ?? null;
@@ -71,6 +82,9 @@ export default function App() {
         ))}
         <button className="tab-add" onClick={addPane} title="Add pane">
           +
+        </button>
+        <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+          {dark ? "☀" : "☽"}
         </button>
       </div>
 
