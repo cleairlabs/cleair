@@ -113,6 +113,26 @@ export function useTraceChannels(backendUrl: string) {
     }
   };
 
+  const removePane = async (paneId: string) => {
+    try {
+      await fetch(`${backendUrl}/channels/${paneId}`, { method: "DELETE" });
+    } catch {
+      // Best-effort — remove from UI regardless
+    }
+    sourcesRef.current.get(paneId)?.close();
+    sourcesRef.current.delete(paneId);
+    setPanes((previousPanes) => {
+      const remainingPanes = previousPanes.filter((pane) => pane.id !== paneId);
+      setActivePaneId((currentActiveId) => {
+        if (currentActiveId !== paneId) return currentActiveId;
+        const removedIndex = previousPanes.findIndex((pane) => pane.id === paneId);
+        const nextPane = remainingPanes[removedIndex] ?? remainingPanes[removedIndex - 1] ?? null;
+        return nextPane?.id ?? null;
+      });
+      return remainingPanes;
+    });
+  };
+
   const setSelectedNodeId = (nodeId: string | null) => {
     if (!activePaneId) return;
     setPanes((previousPanes) =>
@@ -127,6 +147,7 @@ export function useTraceChannels(backendUrl: string) {
     activePaneId,
     setActivePaneId,
     addPane,
+    removePane,
     setSelectedNodeId,
   };
 }
