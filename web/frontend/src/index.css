@@ -14,6 +14,11 @@
   --status-done:    #3A9A3A;
   --status-warn:    #C07A10;
   --status-error:   #C43030;
+
+  --kind-trace:  #ffffff;
+  --kind-agent:  #2563eb;
+  --kind-tool:   #c2410c;
+  --kind-human:  #16a34a;
 }
 
 /* Dark mode */
