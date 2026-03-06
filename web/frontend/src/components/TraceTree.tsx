@@ -60,7 +60,7 @@ function buildTreeEntries(graph: TraceTreeState): TreeEntry[] {
 function TraceIcon() {
   return (
     <svg width="10" height="10" viewBox="0 0 10 10">
-      <path fill="000000" fillRule="evenodd" d="M9,5 A4,4,0,1,0,1,5 A4,4,0,1,0,9,5 M9.5,5 A3,3,0,1,0,3.5,5 A3,3,0,1,0,9.5,5"/>
+      <path fill="#000000" fillRule="evenodd" d="M9,5 A4,4,0,1,0,1,5 A4,4,0,1,0,9,5 M9.5,5 A3,3,0,1,0,3.5,5 A3,3,0,1,0,9.5,5"/>
       <circle cx="5" cy="5" r="4" fill="none" stroke="#000000" strokeWidth="1"/>
     </svg>
   );

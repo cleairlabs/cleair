@@ -11,6 +11,13 @@ function useTheme() {
   const [dark, setDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   useEffect(() => {
+    const systemDarkModeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const onSystemThemeChange = (event: MediaQueryListEvent) => setDark(event.matches);
+    systemDarkModeQuery.addEventListener("change", onSystemThemeChange);
+    return () => systemDarkModeQuery.removeEventListener("change", onSystemThemeChange);
+  }, []);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
   }, [dark]);
 
