@@ -47,6 +47,14 @@ class TraceStore:
     def get_channel(self, api_key: str) -> TraceStore | None:
         return self._channels.get(api_key)
 
+    def delete_channel(self, api_key: str) -> bool:
+        """Remove a channel. Returns True if it existed, False if not found."""
+        if api_key not in self._channels:
+            return False
+        del self._channels[api_key]
+        del self._channel_labels[api_key]
+        return True
+
     def list_channels(self) -> list[dict]:
         return [{"apiKey": k, "label": self._channel_labels[k]} for k in self._channels]
 

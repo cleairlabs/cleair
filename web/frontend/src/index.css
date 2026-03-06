@@ -1,4 +1,28 @@
+/* Light mode (default) */
 :root {
+  --bg:               #F5F5F3;
+  --surface:          #ECECEA;
+  --surface-hover:    #E5E5E3;
+  --surface-selected: #DEDEDC;
+  --border:           #CCCCCA;
+  --text:             #1A1A1A;
+  --text-muted:       #808080;
+  --text-dim:         #C4C4C2;
+  --accent:           #5A5A58;
+
+  --status-running: #3B7DD8;
+  --status-done:    #3A9A3A;
+  --status-warn:    #C07A10;
+  --status-error:   #C43030;
+
+  --kind-trace:  #ffffff;
+  --kind-agent:  #2563eb;
+  --kind-tool:   #c2410c;
+  --kind-human:  #16a34a;
+}
+
+/* Dark mode */
+[data-theme="dark"] {
   --bg: #141414;
   --surface: #1c1c1c;
   --surface-hover: #222222;
@@ -8,11 +32,14 @@
   --text-muted: #888;
   --text-dim: #3a3a3a;
 
-  --status-running: #3b82f6;
-  --status-done: #22c55e;
-  --status-warn: #f59e0b;
-  --status-error: #ef4444;
+  --status-running: #4A82C4;
+  --status-done:    #5A9A5A;
+  --status-warn:    #C4882A;
+  --status-error:   #C44444;
 }
+
+
+
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -51,7 +78,10 @@ body {
 }
 
 .tab {
-  padding: 4px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 12px;
   border-radius: 6px;
   border: 1px solid transparent;
   background: none;
@@ -69,6 +99,29 @@ body {
   color: var(--text);
 }
 
+.tab-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  padding: 0;
+  font-family: inherit;
+}
+
+.tab:hover .tab-remove,
+.tab-active .tab-remove { opacity: 0.5; }
+
+.tab-remove:hover { opacity: 1 !important; background: var(--surface-selected); }
+
 .tab-add {
   padding: 2px 10px;
   border-radius: 6px;
@@ -82,6 +135,21 @@ body {
 }
 
 .tab-add:hover { background: var(--surface-hover); color: var(--text); }
+
+.theme-toggle {
+  margin-left: auto;
+  padding: 2px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.theme-toggle:hover { background: var(--surface-hover); color: var(--text); }
 
 /* ── API key badge ───────────────────────────────────────────────── */
 
@@ -178,12 +246,12 @@ body {
 
 .connection-connected {
   color: var(--status-done);
-  background: rgba(34, 197, 94, 0.1);
+  background: color-mix(in srgb, var(--status-done) 12%, transparent);
 }
 
 .connection-offline {
   color: var(--status-error);
-  background: rgba(239, 68, 68, 0.1);
+  background: color-mix(in srgb, var(--status-error) 12%, transparent);
 }
 
 /* ── Trace list ─────────────────────────────────────────────────────── */

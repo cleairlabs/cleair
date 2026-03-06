@@ -10,8 +10,9 @@ Usage:
 
 _Attrs = dict[str, str | int | float | bool]
 
-TRACE: _Attrs = {"cleair.kind": "trace"}
-AGENT: _Attrs = {"cleair.kind": "agent"}
-HUMAN: _Attrs = {"cleair.kind": "human"}
-SEARCH: _Attrs = {"cleair.kind": "search"}
-TOOL: _Attrs = {"cleair.kind": "tool"}
+TRACE:        _Attrs = {"cleair.kind": "trace"}
+AGENT:        _Attrs = {"cleair.kind": "agent"}
+INTELLIGENCE: _Attrs = {"cleair.kind": "intelligence"}
+HUMAN:        _Attrs = {"cleair.kind": "human"}
+SEARCH:       _Attrs = {"cleair.kind": "search"}
+TOOL:         _Attrs = {"cleair.kind": "tool"}

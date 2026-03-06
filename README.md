@@ -37,15 +37,6 @@ def main() -> None:
 
 
 
-
-## Demo
-
-![cleAIr trace UI demo](docs/media/cleair-demo.gif)
-
-_Real-time trace view from a running agent session._
-
-
-
 ## License
 
 [GPLv3](LICENSE)

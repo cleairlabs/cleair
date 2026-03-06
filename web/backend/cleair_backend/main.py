@@ -33,7 +33,7 @@ store = TraceStore()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -100,6 +100,14 @@ async def list_channels() -> list[dict]:
     """List all channels with their API keys."""
     return store.list_channels()
 
+
+@app.delete("/channels/{api_key}", status_code=204)
+async def delete_channel(api_key: str) -> None:
+    """Delete a channel and all its data."""
+    if not store.delete_channel(api_key):
+        raise HTTPException(status_code=404, detail="Unknown API key")
+
+
 ####
 # Trace ingestion
 ####
@@ -141,6 +149,7 @@ async def ingest_events(request: Request) -> None:
     channel.append_events(run_id, events)
     if any(e.get("type") == "run_completed" for e in events):
         channel.mark_completed(run_id)
+
 
 ####
 # SSE streaming

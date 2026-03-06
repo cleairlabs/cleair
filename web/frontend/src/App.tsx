@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DetailsPanel } from "./components/DetailsPanel";
 import { TraceTree } from "./components/TraceTree";
 import { useTraceChannels } from "./hooks/useTraceChannels";
@@ -6,6 +6,23 @@ import { countNodesByStatus, createEmptyTraceTree } from "./traceTree";
 import type { FlowNode, TraceTreeState } from "./types";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:8000";
+
+function useTheme() {
+  const [dark, setDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+  useEffect(() => {
+    const systemDarkModeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const onSystemThemeChange = (event: MediaQueryListEvent) => setDark(event.matches);
+    systemDarkModeQuery.addEventListener("change", onSystemThemeChange);
+    return () => systemDarkModeQuery.removeEventListener("change", onSystemThemeChange);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+  }, [dark]);
+
+  return { dark, toggle: () => setDark((d) => !d) };
+}
 const EMPTY_RUN_ID = "—";
 const EMPTY_RUN_LABEL = "Waiting for trace…";
 
@@ -47,7 +64,8 @@ function ApiKeyBadge({ apiKey }: { apiKey: string }) {
 }
 
 export default function App() {
-  const { panes, activePaneId, setActivePaneId, addPane, setSelectedNodeId } = useTraceChannels(BACKEND_URL);
+  const { dark, toggle: toggleTheme } = useTheme();
+  const { panes, activePaneId, setActivePaneId, addPane, removePane, setSelectedNodeId } = useTraceChannels(BACKEND_URL);
 
   const activePane = panes.find((pane) => pane.id === activePaneId) ?? null;
   const traceTree = activePane?.traceTree ?? createEmptyTraceTree(EMPTY_RUN_ID, EMPTY_RUN_LABEL);
@@ -61,16 +79,26 @@ export default function App() {
     <div className="app-root">
       <div className="tab-bar">
         {panes.map((pane) => (
-          <button
+          <div
             key={pane.id}
             className={`tab${pane.id === activePaneId ? " tab-active" : ""}`}
             onClick={() => setActivePaneId(pane.id)}
           >
             {pane.label}
-          </button>
+            <button
+              className="tab-remove"
+              onClick={(e) => { e.stopPropagation(); removePane(pane.id); }}
+              title="Remove channel"
+            >
+              ×
+            </button>
+          </div>
         ))}
         <button className="tab-add" onClick={addPane} title="Add pane">
           +
+        </button>
+        <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+          {dark ? "☀" : "☽"}
         </button>
       </div>
 

@@ -56,16 +56,17 @@ function buildTreeEntries(graph: TraceTreeState): TreeEntry[] {
   return entries;
 }
 
-/** Sparkle — represents a top-level trace. */
+/** Eclipse — represents a top-level trace. */
 function TraceIcon() {
   return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="#000">
-      <path d="M5 0 L6.2 3.8 L10 5 L6.2 6.2 L5 10 L3.8 6.2 L0 5 L3.8 3.8 Z" />
+    <svg width="10" height="10" viewBox="0 0 10 10">
+      <path fill="#000000" fillRule="evenodd" d="M9,5 A4,4,0,1,0,1,5 A4,4,0,1,0,9,5 M9.5,5 A3,3,0,1,0,3.5,5 A3,3,0,1,0,9.5,5"/>
+      <circle cx="5" cy="5" r="4" fill="none" stroke="#000000" strokeWidth="1"/>
     </svg>
   );
 }
 
-/** ... — represents AI/agent/robot. */
+/** Agent/robot — represents AI/agent/robot. */
 function AgentIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -74,6 +75,15 @@ function AgentIcon() {
       <rect x="0.3" y="1.6" width="11.4" height="10.2" rx="1.8" fill="#fff" />
       <circle cx="3.9" cy="6.4" r="1.05" fill="#000" />
       <circle cx="8.1" cy="6.4" r="1.05" fill="#000" />
+    </svg>
+  );
+}
+
+/** Sparkle — represents intelligence. */
+function IntelligenceIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="#ffffff">
+      <path d="M5 0 L6.2 3.8 L10 5 L6.2 6.2 L5 10 L3.8 6.2 L0 5 L3.8 3.8 Z" />
     </svg>
   );
 }
@@ -126,11 +136,12 @@ function HumanIcon() {
 }
 
 const kindIcons: Record<FlowNodeKind, () => ReactElement> = {
-  trace: TraceIcon,
-  agent: AgentIcon,
-  search: SearchIcon,
-  tool: ToolIcon,
-  human: HumanIcon,
+  trace:        TraceIcon,
+  agent:        AgentIcon,
+  intelligence: IntelligenceIcon,
+  search:       SearchIcon,
+  tool:         ToolIcon,
+  human:        HumanIcon,
 };
 
 function KindBadge({ kind }: { kind: FlowNodeKind }) {
