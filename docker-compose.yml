@@ -1,0 +1,18 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: web/frontend/Dockerfile
+    ports:
+      - "8080:80"
+
+  backend:
+    build:
+      context: .
+      dockerfile: web/backend/Dockerfile
+    environment:
+      CLEAIR_BACKEND_HOST: 0.0.0.0
+      CLEAIR_BACKEND_PORT: 8000
+      CLEAIR_BACKEND_RELOAD: "false"
+    ports:
+      - "8000:8000"

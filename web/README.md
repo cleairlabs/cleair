@@ -18,7 +18,7 @@
 ```bash
 cd web/backend
 pip install -e .
-python -m cleair_backend.main
+python -m cleair_backend.main --reload
 ```
 
 Runs at `http://localhost:8000`.

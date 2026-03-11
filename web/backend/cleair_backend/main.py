@@ -9,9 +9,11 @@ Endpoints:
 """
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import logging
+import os
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
@@ -166,7 +168,17 @@ async def stream_channel(api_key: str) -> StreamingResponse:
 
 
 def run() -> None:
-    uvicorn.run("cleair_backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    parser = argparse.ArgumentParser(description="Run the cleAIr backend.")
+    parser.add_argument("--host", default=os.environ.get("CLEAIR_BACKEND_HOST", "0.0.0.0"))
+    parser.add_argument("--port", type=int, default=int(os.environ.get("CLEAIR_BACKEND_PORT", "8000")))
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        default=os.environ.get("CLEAIR_BACKEND_RELOAD", "").lower() in {"1", "true", "yes", "on"},
+        help="Enable autoreload for local development.",
+    )
+    args = parser.parse_args()
+    uvicorn.run("cleair_backend.main:app", host=args.host, port=args.port, reload=args.reload)
 
 
 if __name__ == "__main__":
