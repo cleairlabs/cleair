@@ -144,6 +144,7 @@ celerybeat.pid
 .env.deploy
 .env.deploy.local
 .envrc
+web/backend/auth_codes.json
 .venv
 env/
 venv/

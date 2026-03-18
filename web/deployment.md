@@ -16,6 +16,13 @@ Required values:
 DASHBOARD_DOMAIN=dashboard.cleair.ai
 API_DOMAIN=api.cleair.ai
 VITE_BACKEND_URL=https://api.cleair.ai
+CLEAIR_AUTH_SECRET=replace-with-long-random-string
+```
+
+Create the access-code file before starting the stack:
+
+```bash
+cp web/backend/auth_codes.template.json web/backend/auth_codes.json
 ```
 
 ## Build and run
@@ -23,7 +30,7 @@ VITE_BACKEND_URL=https://api.cleair.ai
 The production compose file uses:
 
 - `VITE_BACKEND_URL` at frontend image build time
-- `DASHBOARD_DOMAIN` and `API_DOMAIN` at Caddy runtime
+- `DASHBOARD_DOMAIN`, `API_DOMAIN`, and `CLEAIR_AUTH_SECRET` at runtime
 
 Start the stack with:
 
@@ -47,5 +54,6 @@ Point both hostnames at the server running Docker and Caddy:
 
 - Real domain names are not committed to the repo.
 - `.env.deploy` is ignored by git.
-- There is no proxy-level login in this setup.
-- The backend remains in-memory only.
+- `web/backend/auth_codes.json` is ignored by git.
+- Auth is a lightweight demo gate backed by a 6-digit code list.
+- The backend remains in-memory only after login.

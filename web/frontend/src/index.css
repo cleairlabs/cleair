@@ -59,6 +59,112 @@ body {
   overflow: hidden;
 }
 
+.access-gate-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top, color-mix(in srgb, var(--surface) 86%, transparent), transparent 55%),
+    color-mix(in srgb, var(--bg) 92%, #ffffff 8%);
+  backdrop-filter: blur(8px);
+}
+
+.access-gate-card {
+  width: min(420px, 100%);
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg) 92%, white 8%);
+  box-shadow: 0 28px 64px color-mix(in srgb, black 14%, transparent);
+}
+
+.access-gate-label,
+.access-gate-error { color: var(--text-muted); }
+
+.access-gate-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.access-gate-title {
+  margin-bottom: 8px;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.access-gate-error {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.access-gate-form {
+  margin: 24px 0 10px;
+  display: grid;
+  gap: 14px;
+}
+
+.access-gate-input-shell {
+  position: relative;
+  display: block;
+  cursor: text;
+}
+
+.access-gate-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.access-gate-digits {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.access-gate-digit {
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 24px;
+}
+
+.access-gate-input-shell:focus-within .access-gate-digit {
+  border-color: var(--accent);
+  background: var(--surface-selected);
+}
+
+.access-gate-submit {
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--text);
+  color: var(--bg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.access-gate-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.access-gate-error {
+  min-height: 18px;
+}
+
 .app-layout {
   display: grid;
   grid-template-columns: 1fr 360px;

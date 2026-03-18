@@ -27,14 +27,21 @@ function makePane(label: string, apiKey: string): Pane {
   };
 }
 
-export function useTraceChannels(backendUrl: string) {
+export function useTraceChannels(backendUrl: string, enabled: boolean, refreshAccessState: () => Promise<void>) {
   const [panes, setPanes] = useState<Pane[]>([]);
   const [activePaneId, setActivePaneId] = useState<string | null>(null);
   const sourcesRef = useRef<Map<string, EventSource>>(new Map());
 
   useEffect(() => {
-    fetch(`${backendUrl}/channels`)
-      .then((response) => response.json())
+    if (!enabled) return;
+    fetch(`${backendUrl}/channels`, { credentials: "include" })
+      .then((response) => {
+        if (response.status === 401) {
+          void refreshAccessState();
+        }
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+        return response.json();
+      })
       .then((channels: Array<{ apiKey: string; label: string }>) => {
         if (channels.length === 0) return;
         const restoredPanes = channels.map((channel) => makePane(channel.label, channel.apiKey));
@@ -42,11 +49,18 @@ export function useTraceChannels(backendUrl: string) {
         setActivePaneId(restoredPanes[0].id);
       })
       .catch(() => {});
-  }, [backendUrl]);
+  }, [backendUrl, enabled, refreshAccessState]);
 
   const paneKeys = useMemo(() => panes.map((pane) => pane.apiKey).join(","), [panes]);
 
   useEffect(() => {
+    if (!enabled) {
+      for (const source of sourcesRef.current.values()) source.close();
+      sourcesRef.current.clear();
+      setPanes([]);
+      setActivePaneId(null);
+      return;
+    }
     const currentKeys = new Set(panes.map((pane) => pane.apiKey));
 
     for (const [key, source] of sourcesRef.current) {
@@ -59,7 +73,7 @@ export function useTraceChannels(backendUrl: string) {
     for (const pane of panes) {
       if (sourcesRef.current.has(pane.apiKey)) continue;
       const { apiKey } = pane;
-      const source = new EventSource(`${backendUrl}/channels/${apiKey}/stream`);
+      const source = new EventSource(`${backendUrl}/channels/${apiKey}/stream`, { withCredentials: true });
 
       source.onopen = () =>
         setPanes((previousPanes) =>
@@ -82,16 +96,18 @@ export function useTraceChannels(backendUrl: string) {
         );
       };
 
-      source.onerror = () =>
+      source.onerror = () => {
+        void refreshAccessState();
         setPanes((previousPanes) =>
           previousPanes.map((previousPane) =>
             previousPane.apiKey === apiKey ? { ...previousPane, connectionStatus: "offline" } : previousPane
           )
         );
+      };
 
       sourcesRef.current.set(apiKey, source);
     }
-  }, [backendUrl, paneKeys, panes]);
+  }, [backendUrl, enabled, paneKeys, panes, refreshAccessState]);
 
   useEffect(() => {
     return () => {
@@ -101,7 +117,11 @@ export function useTraceChannels(backendUrl: string) {
 
   const addPane = async () => {
     try {
-      const response = await fetch(`${backendUrl}/channels`, { method: "POST" });
+      const response = await fetch(`${backendUrl}/channels`, { method: "POST", credentials: "include" });
+      if (response.status === 401) {
+        await refreshAccessState();
+        return;
+      }
       if (!response.ok) throw new Error(`Server returned ${response.status}`);
       const { label, apiKey } = (await response.json()) as { label: string; apiKey: string };
       const newPane = makePane(label, apiKey);
@@ -115,7 +135,11 @@ export function useTraceChannels(backendUrl: string) {
 
   const removePane = async (paneId: string) => {
     try {
-      await fetch(`${backendUrl}/channels/${paneId}`, { method: "DELETE" });
+      const response = await fetch(`${backendUrl}/channels/${paneId}`, { method: "DELETE", credentials: "include" });
+      if (response.status === 401) {
+        await refreshAccessState();
+        return;
+      }
     } catch {
       // Best-effort — remove from UI regardless
     }

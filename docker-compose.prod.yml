@@ -12,9 +12,15 @@ services:
       context: .
       dockerfile: web/backend/Dockerfile
     environment:
+      CLEAIR_ALLOWED_ORIGINS: https://${DASHBOARD_DOMAIN}
       CLEAIR_BACKEND_HOST: 0.0.0.0
       CLEAIR_BACKEND_PORT: 8000
       CLEAIR_BACKEND_RELOAD: "false"
+      CLEAIR_AUTH_CODES_PATH: /app/auth_codes.json
+      CLEAIR_AUTH_SECRET: ${CLEAIR_AUTH_SECRET}
+      CLEAIR_AUTH_SECURE_COOKIE: "true"
+    volumes:
+      - ./web/backend/auth_codes.json:/app/auth_codes.json:ro
     restart: unless-stopped
 
   caddy:

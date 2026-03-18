@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { AccessGate } from "./components/AccessGate";
 import { DetailsPanel } from "./components/DetailsPanel";
+import { useAccessGate } from "./hooks/useAccessGate";
 import { TraceTree } from "./components/TraceTree";
 import { useTraceChannels } from "./hooks/useTraceChannels";
 import { countNodesByStatus, createEmptyTraceTree } from "./traceTree";
@@ -65,7 +67,10 @@ function ApiKeyBadge({ apiKey }: { apiKey: string }) {
 
 export default function App() {
   const { dark, toggle: toggleTheme } = useTheme();
-  const { panes, activePaneId, setActivePaneId, addPane, removePane, setSelectedNodeId } = useTraceChannels(BACKEND_URL);
+  const { accessState, accessCode, setAccessCode, errorMessage, isSubmitting, refreshAccessState, submitAccessCode } =
+    useAccessGate(BACKEND_URL);
+  const { panes, activePaneId, setActivePaneId, addPane, removePane, setSelectedNodeId } =
+    useTraceChannels(BACKEND_URL, accessState === "open", refreshAccessState);
 
   const activePane = panes.find((pane) => pane.id === activePaneId) ?? null;
   const traceTree = activePane?.traceTree ?? createEmptyTraceTree(EMPTY_RUN_ID, EMPTY_RUN_LABEL);
@@ -77,6 +82,15 @@ export default function App() {
 
   return (
     <div className="app-root">
+      {accessState !== "open" && (
+        <AccessGate
+          accessCode={accessCode}
+          errorMessage={accessState === "checking" ? null : errorMessage}
+          isSubmitting={isSubmitting || accessState === "checking"}
+          onAccessCodeChange={setAccessCode}
+          onSubmit={submitAccessCode}
+        />
+      )}
       <div className="tab-bar">
         {panes.map((pane) => (
           <div

@@ -11,8 +11,14 @@ services:
       context: .
       dockerfile: web/backend/Dockerfile
     environment:
+      CLEAIR_ALLOWED_ORIGINS: http://localhost:8080
       CLEAIR_BACKEND_HOST: 0.0.0.0
       CLEAIR_BACKEND_PORT: 8000
       CLEAIR_BACKEND_RELOAD: "false"
+      CLEAIR_AUTH_CODES_PATH: /app/auth_codes.json
+      CLEAIR_AUTH_SECRET: local-demo-secret
+      CLEAIR_AUTH_SECURE_COOKIE: "false"
+    volumes:
+      - ./web/backend/auth_codes.json:/app/auth_codes.json:ro
     ports:
       - "8000:8000"
