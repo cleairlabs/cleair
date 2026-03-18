@@ -9,15 +9,27 @@ Endpoints:
 """
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import logging
+import os
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from fastapi.responses import StreamingResponse
 
+from cleair_backend.auth import (
+    AUTH_DETAIL,
+    clear_authenticated_session,
+    is_authenticated,
+    load_auth_config,
+    require_authenticated_request,
+    set_authenticated_session,
+    verify_access_code,
+)
 from cleair_backend.otlp import otlp_payload_to_run_events
 from cleair_backend.store import TraceStore
 
@@ -29,10 +41,15 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="cleAIr backend")
 store = TraceStore()
+auth_config = load_auth_config()
+allowed_origins = [
+    origin for origin in os.environ.get("CLEAIR_ALLOWED_ORIGINS", "http://localhost:5173").split(",") if origin
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
@@ -86,24 +103,51 @@ async def _generate_sse(channel: TraceStore):
 #### API ####
 
 ####
+# Auth
+####
+@app.get("/auth/session")
+async def auth_session(request: Request) -> dict:
+    return {"authenticated": is_authenticated(request, auth_config)}
+
+
+@app.post("/auth/verify")
+async def auth_verify(request: Request, response: Response) -> dict:
+    body = await request.json()
+    access_code = str(body.get("code", ""))
+    if not verify_access_code(access_code, auth_config):
+        raise HTTPException(status_code=401, detail=AUTH_DETAIL)
+    set_authenticated_session(response, auth_config)
+    return {"authenticated": True}
+
+
+@app.post("/auth/logout", status_code=204)
+async def auth_logout(response: Response) -> Response:
+    clear_authenticated_session(response, auth_config)
+    return response
+
+
+####
 # Channel management
 ####
 @app.post("/channels", status_code=201)
-async def create_channel() -> dict:
+async def create_channel(request: Request) -> dict:
     """Create a new isolated channel. Returns its label and API key."""
+    require_authenticated_request(request, auth_config)
     label, api_key = store.create_channel()
     return {"label": label, "apiKey": api_key}
 
 
 @app.get("/channels")
-async def list_channels() -> list[dict]:
+async def list_channels(request: Request) -> list[dict]:
     """List all channels with their API keys."""
+    require_authenticated_request(request, auth_config)
     return store.list_channels()
 
 
 @app.delete("/channels/{api_key}", status_code=204)
-async def delete_channel(api_key: str) -> None:
+async def delete_channel(api_key: str, request: Request) -> None:
     """Delete a channel and all its data."""
+    require_authenticated_request(request, auth_config)
     if not store.delete_channel(api_key):
         raise HTTPException(status_code=404, detail="Unknown API key")
 
@@ -155,8 +199,9 @@ async def ingest_events(request: Request) -> None:
 # SSE streaming
 ####
 @app.get("/channels/{api_key}/stream")
-async def stream_channel(api_key: str) -> StreamingResponse:
+async def stream_channel(api_key: str, request: Request) -> StreamingResponse:
     """SSE stream that always follows the latest run in a channel."""
+    require_authenticated_request(request, auth_config)
     channel = store.get_channel(api_key)
     if channel is None:
         raise HTTPException(status_code=404, detail="Unknown API key")
@@ -166,7 +211,17 @@ async def stream_channel(api_key: str) -> StreamingResponse:
 
 
 def run() -> None:
-    uvicorn.run("cleair_backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    parser = argparse.ArgumentParser(description="Run the cleAIr backend.")
+    parser.add_argument("--host", default=os.environ.get("CLEAIR_BACKEND_HOST", "0.0.0.0"))
+    parser.add_argument("--port", type=int, default=int(os.environ.get("CLEAIR_BACKEND_PORT", "8000")))
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        default=os.environ.get("CLEAIR_BACKEND_RELOAD", "").lower() in {"1", "true", "yes", "on"},
+        help="Enable autoreload for local development.",
+    )
+    args = parser.parse_args()
+    uvicorn.run("cleair_backend.main:app", host=args.host, port=args.port, reload=args.reload)
 
 
 if __name__ == "__main__":

@@ -51,5 +51,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    cleair.init(CleairConfig(service_name="research-agent", exporter="cleair_http", cleair_api_key="<your cleair API key>"))
+    cleair.init(CleairConfig(service_name="research-agent", exporter="cleair_http", cleair_api_key="<your cleair API TRACE-KEY>"))
     main()

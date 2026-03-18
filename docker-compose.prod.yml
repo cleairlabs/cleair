@@ -1,0 +1,45 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: web/frontend/Dockerfile
+      args:
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL}
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: web/backend/Dockerfile
+    environment:
+      CLEAIR_ALLOWED_ORIGINS: https://${DASHBOARD_DOMAIN}
+      CLEAIR_BACKEND_HOST: 0.0.0.0
+      CLEAIR_BACKEND_PORT: 8000
+      CLEAIR_BACKEND_RELOAD: "false"
+      CLEAIR_AUTH_CODES_PATH: /app/auth_codes.json
+      CLEAIR_AUTH_SECRET: ${CLEAIR_AUTH_SECRET}
+      CLEAIR_AUTH_SECURE_COOKIE: "true"
+    volumes:
+      - ./web/backend/auth_codes.json:/app/auth_codes.json:ro
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.10
+    depends_on:
+      - frontend
+      - backend
+    environment:
+      DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.template:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

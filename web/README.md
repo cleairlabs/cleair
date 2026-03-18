@@ -9,16 +9,19 @@
 
 ## Endpoints
 
+- `GET /auth/session`: cookie-backed auth status
+- `POST /auth/verify`: verify the demo access code
 - `POST /v1/traces`: OTLP/JSON trace ingestion
 - `POST /v1/events`: cleair-native event ingestion (streaming)
-- `GET /runs/latest/stream`: SSE stream of latest run events
+- `GET /channels/{api_key}/stream`: SSE stream of latest run events
 
 ## Run
 
 ```bash
+cp web/backend/auth_codes.template.json web/backend/auth_codes.json
 cd web/backend
 pip install -e .
-python -m cleair_backend.main
+CLEAIR_AUTH_SECRET=local-demo-secret python -m cleair_backend.main --reload
 ```
 
 Runs at `http://localhost:8000`.
