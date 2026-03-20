@@ -4,15 +4,6 @@
 
 Alternative curl bootstrap:
 
-<!--
-```bash
-apt update
-apt install -y curl
-curl -fsSL https://raw.githubusercontent.com/cleairlabs/cleair/main/scripts/bootstrap_server.sh -o /tmp/bootstrap_server.sh
-bash /tmp/bootstrap_server.sh
-```
--->
-
 For a fresh Ubuntu DigitalOcean Droplet, install `git` and run the bootstrap
 script as `root`:
 
@@ -27,20 +18,13 @@ Optional environment variables:
 
 ```bash
 DEPLOY_USER=deploy TIMEZONE_NAME=Europe/Stockholm SWAP_SIZE_GB=2 bash /opt/cleair/scripts/bootstrap_server.sh
+su - deploy
+cd /opt/cleair/
 ```
 
-If you use the curl bootstrap instead, clone the repo after bootstrap so the
-server has a persistent checkout for future CD updates:
-
-```bash
-git clone https://github.com/cleairlabs/cleair.git /opt/cleair
-```
-
-The script installs base packages, Docker Engine, Docker Compose, UFW rules,
-swap, and a non-root deploy user with Docker and passwordless `sudo` access. It
-intentionally does not modify SSH daemon settings. If
-`/root/.ssh/authorized_keys` exists, it is copied to the deploy user to
-preserve login access.
+The script installs base packages, Docker Engine, Docker Compose, UFW rules, swap, and a non-root deploy user with Docker and passwordless `sudo` access. 
+It intentionally does not modify SSH daemon settings. 
+If `/root/.ssh/authorized_keys` exists, it is copied to the deploy user to preserve login access.
 
 Keep the production checkout in `/opt/cleair` so deployment automation can
 `git fetch` and `git pull` in place before rebuilding the stack.
