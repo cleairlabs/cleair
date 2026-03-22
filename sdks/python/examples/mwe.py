@@ -51,5 +51,12 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    cleair.init(CleairConfig(service_name="research-agent", exporter="cleair_http", cleair_api_key="<your cleair API TRACE-KEY>"))
+    cleair.init(
+        CleairConfig(
+            service_name="research-agent",
+            exporter="cleair_http",
+            cleair_http_endpoint="https://api.cleair.ai/v1/events",
+            cleair_api_key="630b2404eea265e6242cd8d1a85f1a8e",
+        )
+    )
     main()

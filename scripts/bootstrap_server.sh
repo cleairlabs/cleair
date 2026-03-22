@@ -113,9 +113,9 @@ Swap: ${swap_size_gb}G
 
 Next steps:
 1. Log in as ${deploy_user}.
-2. Ensure a repo checkout exists at ${repo_dir} for future deploys.
-3. Create .env.deploy and web/backend/auth_codes.json.
-4. Run docker compose -f docker-compose.prod.yml --env-file .env.deploy up -d --build
+2. Ensure ${repo_dir} is available for future deploys.
+3. Add the deploy SSH key for ${deploy_user}.
+4. Set GitHub Actions deploy variables and secrets, then trigger the Deploy workflow.
 5. After confirming key-based login works for ${deploy_user}, harden SSH manually.
 EOF
 }

@@ -26,33 +26,57 @@ The script installs base packages, Docker Engine, Docker Compose, UFW rules, swa
 It intentionally does not modify SSH daemon settings. 
 If `/root/.ssh/authorized_keys` exists, it is copied to the deploy user to preserve login access.
 
-Keep the production checkout in `/opt/cleair` so deployment automation can
-`git fetch` and `git pull` in place before rebuilding the stack.
+Use `/opt/cleair` as the production directory so the deploy workflow can sync
+the repo contents there before rebuilding the stack.
 
-## Production env
+## GitHub Actions deploy
 
-Keep real production values in an untracked `.env.deploy` at the repo root.
-
-Start from the template:
-
-```bash
-cp .env.deploy.template .env.deploy
-```
-
-Required values:
+After bootstrapping a new server and adding the deploy SSH key, set these
+GitHub Actions variables:
 
 ```bash
-DASHBOARD_DOMAIN=dashboard.cleair.ai
-API_DOMAIN=api.cleair.ai
-VITE_BACKEND_URL=https://api.cleair.ai
-CLEAIR_AUTH_SECRET=replace-with-long-random-string
+DEPLOY_HOST=your-server-ip-or-hostname
+DEPLOY_PATH=/opt/cleair
+DEPLOY_PORT=22
+DEPLOY_USER=deploy
+DASHBOARD_DOMAIN=dashboard.example.com
+API_DOMAIN=api.example.com
+VITE_BACKEND_URL=https://api.example.com
 ```
 
-Create the access-code file before starting the stack:
+Set these GitHub Actions secrets:
 
 ```bash
-cp web/backend/auth_codes.template.json web/backend/auth_codes.json
+DEPLOY_SSH_KEY=<private-key-for-the-deploy-user>
+CLEAIR_AUTH_SECRET=<long-random-string>
+DEPLOY_AUTH_CODES_JSON={"codes":["<6-digit-code>"]}
 ```
+
+Security notes:
+
+- Keep `DASHBOARD_DOMAIN`, `API_DOMAIN`, and `VITE_BACKEND_URL` as GitHub
+  Actions variables. They are configuration, not secrets.
+- Keep `DEPLOY_SSH_KEY`, `CLEAIR_AUTH_SECRET`, and `DEPLOY_AUTH_CODES_JSON`
+  as GitHub Actions secrets.
+- Use a dedicated deploy key for this repo and server. Do not reuse a personal
+  SSH key.
+- Scope the private key to the `deploy` user on the target host and keep that
+  account limited to deployment duties.
+- Prefer GitHub Environment-scoped variables and secrets for production so
+  deploy permissions can be restricted and reviewed.
+- Never commit `.env.deploy`, `web/backend/auth_codes.json`, or private keys to
+  git.
+
+Then trigger the `Deploy` workflow from the Actions tab. The workflow:
+
+- checks out the repo
+- writes `.env.deploy` from GitHub Actions variables and secrets
+- writes `web/backend/auth_codes.json` from `DEPLOY_AUTH_CODES_JSON`
+- syncs the repo to the target server with `rsync`
+- runs `bash scripts/deploy.sh` on the server
+
+`.env.deploy` and `web/backend/auth_codes.json` stay untracked and are
+generated fresh on every deployment.
 
 ## Build and run
 
@@ -66,6 +90,9 @@ Start the stack with:
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.deploy up -d --build
 ```
+
+For manual server-side deploys, create `.env.deploy` and
+`web/backend/auth_codes.json` with the same values before running the command.
 
 ## Routing
 
