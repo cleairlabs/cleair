@@ -1,5 +1,34 @@
 # Web Deployment
 
+## Host bootstrap
+
+Alternative curl bootstrap:
+
+For a fresh Ubuntu DigitalOcean Droplet, install `git` and run the bootstrap
+script as `root`:
+
+```bash
+apt update
+apt install -y git
+git clone https://github.com/cleairlabs/cleair.git /opt/cleair
+bash /opt/cleair/scripts/bootstrap_server.sh
+```
+
+Optional environment variables:
+
+```bash
+DEPLOY_USER=deploy TIMEZONE_NAME=Europe/Stockholm SWAP_SIZE_GB=2 bash /opt/cleair/scripts/bootstrap_server.sh
+su - deploy
+cd /opt/cleair/
+```
+
+The script installs base packages, Docker Engine, Docker Compose, UFW rules, swap, and a non-root deploy user with Docker and passwordless `sudo` access. 
+It intentionally does not modify SSH daemon settings. 
+If `/root/.ssh/authorized_keys` exists, it is copied to the deploy user to preserve login access.
+
+Keep the production checkout in `/opt/cleair` so deployment automation can
+`git fetch` and `git pull` in place before rebuilding the stack.
+
 ## Production env
 
 Keep real production values in an untracked `.env.deploy` at the repo root.
@@ -55,5 +84,4 @@ Point both hostnames at the server running Docker and Caddy:
 - Real domain names are not committed to the repo.
 - `.env.deploy` is ignored by git.
 - `web/backend/auth_codes.json` is ignored by git.
-- Auth is a lightweight demo gate backed by a 6-digit code list.
-- The backend remains in-memory only after login.
+- Auth is a lightweight demo gate.

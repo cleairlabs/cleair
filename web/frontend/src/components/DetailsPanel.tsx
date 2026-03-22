@@ -36,10 +36,6 @@ export function DetailsPanel({ selectedNode, traceTree, doneCount, errorCount }:
               <span className="detail-label">What</span>
               <p className="detail-body">{selectedNode.whatDescription}</p>
             </div>
-            <div className="detail-section">
-              <span className="detail-label">Why</span>
-              <p className="detail-body">{selectedNode.whyDescription}</p>
-            </div>
             {selectedNode.output !== null && (
               <div className="detail-section">
                 <span className="detail-label">Output</span>

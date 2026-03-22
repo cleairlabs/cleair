@@ -11,7 +11,6 @@ export type FlowNode = {
   durationMs: number | null;
   output: string | null;
   whatDescription: string;
-  whyDescription: string;
 };
 
 export type TraceTreeState = {
