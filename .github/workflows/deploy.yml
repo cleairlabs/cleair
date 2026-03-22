@@ -1,0 +1,149 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate deploy configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required_vars=(
+            API_DOMAIN
+            DASHBOARD_DOMAIN
+            DEPLOY_HOST
+            DEPLOY_USER
+            VITE_BACKEND_URL
+          )
+
+          for required_var in "${required_vars[@]}"; do
+            if [[ -z "${!required_var:-}" ]]; then
+              echo "Missing GitHub Actions variable: ${required_var}" >&2
+              exit 1
+            fi
+          done
+
+          required_secrets=(
+            CLEAIR_AUTH_SECRET
+            DEPLOY_AUTH_CODES_JSON
+            DEPLOY_SSH_KEY
+          )
+
+          for required_secret in "${required_secrets[@]}"; do
+            if [[ -z "${!required_secret:-}" ]]; then
+              echo "Missing GitHub Actions secret: ${required_secret}" >&2
+              exit 1
+            fi
+          done
+
+          if [[ -z "${DEPLOY_PATH:-}" ]]; then
+            echo "DEPLOY_PATH not set, defaulting to /opt/cleair"
+          fi
+        env:
+          API_DOMAIN: ${{ vars.API_DOMAIN }}
+          CLEAIR_AUTH_SECRET: ${{ secrets.CLEAIR_AUTH_SECRET }}
+          DASHBOARD_DOMAIN: ${{ vars.DASHBOARD_DOMAIN }}
+          DEPLOY_AUTH_CODES_JSON: ${{ secrets.DEPLOY_AUTH_CODES_JSON }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL }}
+
+      - name: Create deploy files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > .env.deploy <<EOF
+          DASHBOARD_DOMAIN=${DASHBOARD_DOMAIN}
+          API_DOMAIN=${API_DOMAIN}
+          VITE_BACKEND_URL=${VITE_BACKEND_URL}
+          CLEAIR_AUTH_SECRET=${CLEAIR_AUTH_SECRET}
+          EOF
+
+          printf '%s\n' "${DEPLOY_AUTH_CODES_JSON}" > web/backend/auth_codes.json
+          jq empty web/backend/auth_codes.json
+        env:
+          API_DOMAIN: ${{ vars.API_DOMAIN }}
+          CLEAIR_AUTH_SECRET: ${{ secrets.CLEAIR_AUTH_SECRET }}
+          DASHBOARD_DOMAIN: ${{ vars.DASHBOARD_DOMAIN }}
+          DEPLOY_AUTH_CODES_JSON: ${{ secrets.DEPLOY_AUTH_CODES_JSON }}
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL }}
+
+      - name: Configure SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          if [[ -n "${DEPLOY_PORT:-}" ]]; then
+            ssh-keyscan -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
+          fi
+
+          chmod 600 ~/.ssh/known_hosts
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Sync project files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rsync_args=(
+            -az
+            --exclude
+            .git/
+            --exclude
+            .github/
+          )
+
+          ssh_args=(
+            -i
+            ~/.ssh/deploy_key
+            -o
+            StrictHostKeyChecking=yes
+          )
+
+          if [[ -n "${DEPLOY_PORT:-}" ]]; then
+            ssh_args+=(-p "${DEPLOY_PORT}")
+          fi
+
+          deploy_path="${DEPLOY_PATH:-/opt/cleair}"
+
+          ssh "${ssh_args[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '${deploy_path}'"
+          rsync "${rsync_args[@]}" -e "ssh ${ssh_args[*]}" ./ "${DEPLOY_USER}@${DEPLOY_HOST}:${deploy_path}/"
+
+      - name: Run deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh_args=(
+            -i
+            ~/.ssh/deploy_key
+            -o
+            StrictHostKeyChecking=yes
+          )
+
+          if [[ -n "${DEPLOY_PORT:-}" ]]; then
+            ssh_args+=(-p "${DEPLOY_PORT}")
+          fi
+
+          deploy_path="${DEPLOY_PATH:-/opt/cleair}"
+
+          ssh "${ssh_args[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "cd '${deploy_path}' && REPO_DIR='${deploy_path}' bash scripts/deploy.sh"
