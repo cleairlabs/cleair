@@ -109,7 +109,8 @@ jobs:
 
           deploy_path="${DEPLOY_PATH:-/opt/cleair}"
 
-          ssh "${ssh_args[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '${deploy_path}'"
+          ssh "${ssh_args[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "sudo mkdir -p '${deploy_path}' && sudo chown -R '${DEPLOY_USER}:${DEPLOY_USER}' '${deploy_path}'"
           rsync "${rsync_args[@]}" -e "ssh ${ssh_args[*]}" ./ "${DEPLOY_USER}@${DEPLOY_HOST}:${deploy_path}/"
 
       - name: Run deploy
