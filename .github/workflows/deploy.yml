@@ -3,6 +3,13 @@ name: Deploy
 on:
   workflow_dispatch:
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -19,13 +26,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          required_vars=(
-            API_DOMAIN
-            DASHBOARD_DOMAIN
-            DEPLOY_HOST
-            DEPLOY_USER
-            VITE_BACKEND_URL
-          )
+          required_vars=(API_DOMAIN DASHBOARD_DOMAIN DEPLOY_HOST DEPLOY_USER VITE_BACKEND_URL)
 
           for required_var in "${required_vars[@]}"; do
             if [[ -z "${!required_var:-}" ]]; then
@@ -34,11 +35,7 @@ jobs:
             fi
           done
 
-          required_secrets=(
-            CLEAIR_AUTH_SECRET
-            DEPLOY_AUTH_CODES_JSON
-            DEPLOY_SSH_KEY
-          )
+          required_secrets=(CLEAIR_AUTH_SECRET DEPLOY_AUTH_CODES_JSON DEPLOY_SSH_KEY)
 
           for required_secret in "${required_secrets[@]}"; do
             if [[ -z "${!required_secret:-}" ]]; then
@@ -63,12 +60,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          cat > .env.deploy <<EOF
-          DASHBOARD_DOMAIN=${DASHBOARD_DOMAIN}
-          API_DOMAIN=${API_DOMAIN}
-          VITE_BACKEND_URL=${VITE_BACKEND_URL}
-          CLEAIR_AUTH_SECRET=${CLEAIR_AUTH_SECRET}
-          EOF
+          printf '%s\n' \
+            "DASHBOARD_DOMAIN=${DASHBOARD_DOMAIN}" \
+            "API_DOMAIN=${API_DOMAIN}" \
+            "VITE_BACKEND_URL=${VITE_BACKEND_URL}" \
+            "CLEAIR_AUTH_SECRET=${CLEAIR_AUTH_SECRET}" \
+            > .env.deploy
 
           printf '%s\n' "${DEPLOY_AUTH_CODES_JSON}" > web/backend/auth_codes.json
           jq empty web/backend/auth_codes.json
@@ -103,20 +100,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          rsync_args=(
-            -az
-            --exclude
-            .git/
-            --exclude
-            .github/
-          )
-
-          ssh_args=(
-            -i
-            ~/.ssh/deploy_key
-            -o
-            StrictHostKeyChecking=yes
-          )
+          rsync_args=(-az --exclude .git/ --exclude .github/)
+          ssh_args=(-i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes)
 
           if [[ -n "${DEPLOY_PORT:-}" ]]; then
             ssh_args+=(-p "${DEPLOY_PORT}")
@@ -132,12 +117,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          ssh_args=(
-            -i
-            ~/.ssh/deploy_key
-            -o
-            StrictHostKeyChecking=yes
-          )
+          ssh_args=(-i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes)
 
           if [[ -n "${DEPLOY_PORT:-}" ]]; then
             ssh_args+=(-p "${DEPLOY_PORT}")
