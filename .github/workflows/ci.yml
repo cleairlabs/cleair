@@ -1,0 +1,17 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    uses: ./.github/workflows/backend-tests.yml
+
+  web-tests:
+    uses: ./.github/workflows/web-tests.yml
+
+  python-sdk-tests:
+    uses: ./.github/workflows/python-sdk-tests.yml
