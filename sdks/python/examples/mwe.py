@@ -1,7 +1,6 @@
 from __future__ import annotations
 import time
 import cleair
-from cleair import CleairConfig
 
 
 @cleair.observe(name="web_search", capture_output=True, attributes=cleair.kind.SEARCH)
@@ -51,12 +50,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    cleair.init(
-        CleairConfig(
-            service_name="research-agent",
-            exporter="cleair_http",
-            cleair_http_endpoint="https://api.cleair.ai/v1/events",
-            cleair_api_key="630b2404eea265e6242cd8d1a85f1a8e",
-        )
-    )
+    # cleair.init(service_name="Agent", cleair_http_endpoint= "http://localhost:8000/v1/events", cleair_api_key="<channel-api-key>") # Local
+    cleair.init(service_name="Agent", cleair_api_key="<channel-api-key>")
     main()

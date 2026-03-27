@@ -5,16 +5,20 @@
 
 Every line must earn its keep. Prefer readability over cleverness. Keep changes small and intentional.
 
-Never mix functionality changes with whitespace changes.
+Never mix functionality changes with whitespace or line-wrapping changes.
 
-Never make whitespace changes unless explicitly asked to.
+Never make whitespace or line-wrapping changes unless explicitly asked.
 
 All functionality changes must be tested.
 
 
 ## Style
 
-Use the existing project style. Keep lines to a maximum of 120 characters.
+Use the existing project style. 
+
+Keep lines to a maximum of 140 characters.
+
+Lines that can be cleanly expressed in under 140 characters should be one-liners.
 
 Use verbose and descriptive variable names using:
     - Python: snake_case for functions/variables, PascalCase for classes.

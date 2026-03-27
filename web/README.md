@@ -29,17 +29,12 @@ Runs at `http://localhost:8000`.
 ## Python SDK
 
 ```python
-cleair.init(CleairConfig(service_name="my-agent", exporter="cleair_http"))
+cleair.init(service_name="my-agent", cleair_api_key="<channel-api-key>")
 ```
 
-Or via environment variables:
-
-```bash
-CLEAIR_EXPORTER=cleair_http python your_agent.py
-```
-
-Default `CLEAIR_HTTP_ENDPOINT` is `http://localhost:8000/v1/events`.
-Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` for OTLP mode (`/v1/traces`).
+This is the default path. `cleair_http` sends to `https://api.cleair.ai/v1/events`.
+When sending traces to the local backend instead, set `CLEAIR_HTTP_ENDPOINT=http://localhost:8000/v1/events`.
+For OTLP, terminal, or console output, set an explicit exporter in `cleair.init(...)`.
 
 ## Frontend
 

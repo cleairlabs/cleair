@@ -20,34 +20,49 @@ _initialized = False
 _init_lock = threading.Lock()
 
 
-def init(config: CleairConfig | None = None) -> None:
+def init(config: CleairConfig | None = None, 
+         *,
+         service_name: str | None = None,
+         exporter: str | None = None,
+         otlp_http_endpoint: str | None = None,
+         cleair_http_endpoint: str | None = None,
+         cleair_api_key: str | None = None,
+         terminal_stream: bool | None = None,) -> None:
     global _initialized
     if _initialized: return # fast path (double-check locking pattern)
     with _init_lock:
         if _initialized: return # re-check
 
         resolved_config = config or CleairConfig.from_env()
+        resolved_config = CleairConfig(
+            service_name=resolved_config.service_name if service_name is None else service_name,
+            exporter=resolved_config.exporter if exporter is None else exporter,
+            otlp_http_endpoint=(resolved_config.otlp_http_endpoint if otlp_http_endpoint is None else otlp_http_endpoint),
+            cleair_http_endpoint=(resolved_config.cleair_http_endpoint if cleair_http_endpoint is None else cleair_http_endpoint),
+            cleair_api_key=resolved_config.cleair_api_key if cleair_api_key is None else cleair_api_key,
+            terminal_stream=resolved_config.terminal_stream if terminal_stream is None else terminal_stream,
+        )
         resource = Resource.create({"service.name": resolved_config.service_name})
         provider = TracerProvider(resource=resource)
         if resolved_config.exporter == "console":
             from opentelemetry.sdk.trace.export import ConsoleSpanExporter
-            exporter = ConsoleSpanExporter()
-            provider.add_span_processor(BatchSpanProcessor(exporter))
+            span_exporter = ConsoleSpanExporter()
+            provider.add_span_processor(BatchSpanProcessor(span_exporter))
         elif resolved_config.exporter == "terminal":
             from cleair.exporters import CleairConsoleSpanExporter
-            exporter = CleairConsoleSpanExporter(stream=resolved_config.terminal_stream)
-            provider.add_span_processor(SimpleSpanProcessor(exporter))
+            span_exporter = CleairConsoleSpanExporter(stream=resolved_config.terminal_stream)
+            provider.add_span_processor(SimpleSpanProcessor(span_exporter))
         elif resolved_config.exporter == "otlp_http":
             from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-            exporter = OTLPSpanExporter(endpoint=resolved_config.otlp_http_endpoint)
-            provider.add_span_processor(BatchSpanProcessor(exporter))
+            span_exporter = OTLPSpanExporter(endpoint=resolved_config.otlp_http_endpoint)
+            provider.add_span_processor(BatchSpanProcessor(span_exporter))
         elif resolved_config.exporter == "cleair_http":
             if not resolved_config.cleair_api_key:
                 raise ValueError(
                     "cleair_api_key is required when using exporter='cleair_http'.\n"
                     "Create a pane in the cleair UI and pass its key:\n"
                     "  CleairConfig(exporter='cleair_http', cleair_api_key='<key>')\n"
-                    "or set the CLEAIR_API_KEY environment variable.")
+                    "or pass cleair_api_key='<key>' to cleair.init(...).")
             from cleair.exporters.cleair_http import CleairHttpSpanProcessor
             provider.add_span_processor(CleairHttpSpanProcessor(
                 endpoint=resolved_config.cleair_http_endpoint,
@@ -89,8 +104,7 @@ def trace_call(function, /,
                span_name: str | None = None,
                attributes: dict[str, str | int | float | bool] | None = None,
                capture_output: bool = False,
-               **kwargs,
-):
+               **kwargs,):
     name = span_name or getattr(function, "__qualname__", getattr(function, "__name__", "call"))
     with span(name, attributes=attributes) as sh:
         start = time.perf_counter()
@@ -108,8 +122,7 @@ async def _trace_call_async(function, /,
                             span_name: str | None = None, 
                             attributes: dict[str, str | int | float | bool] | None = None, 
                             capture_output: bool = False,
-                            **kwargs,
-):
+                            **kwargs,):
     name = span_name or getattr(function, "__qualname__", getattr(function, "__name__", "call"))
     with span(name, attributes=attributes) as sh:
         start = time.perf_counter()
@@ -125,8 +138,7 @@ async def _trace_call_async(function, /,
 def trace(function=None, /, *,
           span_name: str | None = None,
           attributes: dict[str, str | int | float | bool] | None = None,
-          capture_output: bool = False,
-):
+          capture_output: bool = False,):
     def decorator(target_function):
         if inspect.iscoroutinefunction(target_function):
             @functools.wraps(target_function)
@@ -145,8 +157,7 @@ def trace(function=None, /, *,
 
 def _merge_observe_attributes(*, attributes: dict[str, str | int | float | bool] | None, 
                               metadata: dict[str, str | int | float | bool] | None, 
-                              session_id: str | None,
-) -> dict[str, str | int | float | bool] | None:
+                              session_id: str | None,) -> dict[str, str | int | float | bool] | None:
     resolved_attributes: dict[str, str | int | float | bool] = {}
     if metadata: resolved_attributes.update(metadata)
     if attributes: resolved_attributes.update(attributes)
@@ -160,8 +171,7 @@ def observe(function=None, /, *,
             attributes: dict[str, str | int | float | bool] | None = None,
             metadata: dict[str, str | int | float | bool] | None = None,
             session_id: str | None = None,
-            capture_output: bool = False,
-):
+            capture_output: bool = False,):
     resolved_span_name = span_name or name
     resolved_attributes = _merge_observe_attributes(attributes=attributes, metadata=metadata, session_id=session_id)
     if function is None:

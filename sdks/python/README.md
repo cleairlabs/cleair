@@ -32,7 +32,7 @@ def main() -> None:
 ```python
 import cleair
 
-cleair.init(cleair.CleairConfig(service_name="my-agent", exporter="terminal"))
+cleair.init(service_name="my-agent", cleair_api_key="<key>")
 
 @cleair.observe(name="agent.request")
 def main() -> None:
@@ -50,9 +50,19 @@ cleair.init(cleair.CleairConfig(service_name="my-agent", exporter="terminal", te
 
 You can also use `CLEAIR_TERMINAL_STREAM=true`.
 
+By default, cleAIr uses the hosted `cleair_http` exporter and requires a
+`cleair_api_key`:
+
+```python
+cleair.init(service_name="my-agent", cleair_api_key="<key>")
+```
+
+The API key must be passed to `cleair.init(...)` or included in an explicit
+`CleairConfig(...)`. It is not read from environment variables.
+
 Available exporters:
-- `otlp_http` (default) — OTLP/HTTP to any OpenTelemetry collector
-- `cleair_http` — streams to the cleAIr web UI (`http://localhost:8000/v1/events`)
+- `cleair_http` (default) — streams to the cleAIr web UI (`https://api.cleair.ai/v1/events`)
+- `otlp_http` — OTLP/HTTP to any OpenTelemetry collector
 - `console` — OpenTelemetry JSON output
 - `terminal` — cleair tree-style terminal output (uses `rich` when installed)
 
