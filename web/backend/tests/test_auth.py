@@ -63,8 +63,9 @@ def test_invalid_code_is_rejected() -> None:
 def test_expired_signed_cookie_is_rejected() -> None:
     client = TestClient(main.app)
     expired_cookie = _sign_value(main.auth_config.secret_key, "1:expired-session")
+    client.cookies.set(SESSION_COOKIE_NAME, expired_cookie)
 
-    response = client.get("/channels", cookies={SESSION_COOKIE_NAME: expired_cookie})
+    response = client.get("/channels")
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Authentication required"}

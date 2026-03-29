@@ -23,6 +23,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # cleair.init()  # reads env; default OTLP HTTP -> http://localhost:4318/v1/traces
+    # cleair.init(service_name="my-agent", cleair_api_key="<key>")
     cleair.init(cleair.CleairConfig(service_name="my-agent", exporter="console"))
     main()

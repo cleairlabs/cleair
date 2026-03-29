@@ -32,7 +32,7 @@ def main() -> None:
 ```python
 import cleair
 
-cleair.init(cleair.CleairConfig(service_name="my-agent", exporter="terminal"))
+cleair.init(service_name="my-agent", cleair_api_key="<key>")
 
 @cleair.observe(name="agent.request")
 def main() -> None:
@@ -42,19 +42,19 @@ def main() -> None:
         ...
 ```
 
-For streaming terminal output (emit each ended span immediately):
+By default, cleAIr uses the hosted `cleair_http` exporter and requires a
+`cleair_api_key`:
 
 ```python
-cleair.init(cleair.CleairConfig(service_name="my-agent", exporter="terminal", terminal_stream=True))
+cleair.init(service_name="my-agent", cleair_api_key="<key>")
 ```
 
-You can also use `CLEAIR_TERMINAL_STREAM=true`.
+The API key must be passed to `cleair.init(...)` or included in an explicit
+`CleairConfig(...)`. It is not read from environment variables.
 
 Available exporters:
-- `otlp_http` (default) — OTLP/HTTP to any OpenTelemetry collector
-- `cleair_http` — streams to the cleAIr web UI (`http://localhost:8000/v1/events`)
+- `cleair_http` (default) — streams to the cleAIr web UI (`https://api.cleair.ai/v1/events`)
 - `console` — OpenTelemetry JSON output
-- `terminal` — cleair tree-style terminal output (uses `rich` when installed)
 
 ## Node kinds
 
@@ -73,12 +73,6 @@ def plan(): ...
 | `cleair.kind.AGENT` | sparkle | purple |
 | `cleair.kind.SEARCH` | magnifying glass | blue |
 | `cleair.kind.TOOL` | terminal `>_` | orange (default) |
-
-Install rich terminal rendering:
-
-```bash
-pip install -e ".[terminal]"
-```
 
 ## License
 

@@ -4,34 +4,32 @@ import cleair
 from cleair import _core
 
 
-def test_observe_without_parentheses_calls_trace(monkeypatch) -> None:
+def test_observe_without_parentheses_wraps_function(monkeypatch) -> None:
     def target() -> str: return "ok"
 
-    trace_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    wrap_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
-    def fake_trace(*args, **kwargs):
-        trace_calls.append((args, kwargs))
-        if args: return args[0]
-        return lambda function: function
+    def fake_wrap(*args, **kwargs):
+        wrap_calls.append((args, kwargs))
+        return args[0]
 
-    monkeypatch.setattr(_core, "trace", fake_trace)
+    monkeypatch.setattr(_core, "_wrap_observed_function", fake_wrap)
     wrapped = _core.observe(target)
 
     assert wrapped is target
-    assert trace_calls == [((target,), {"span_name": None, "attributes": None, "capture_output": False})]
+    assert wrap_calls == [((target,), {"span_name": None, "attributes": None, "capture_output": False})]
 
 
 def test_observe_merges_attributes_and_metadata(monkeypatch) -> None:
     def target() -> str: return "ok"
 
-    trace_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    wrap_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
-    def fake_trace(*args, **kwargs):
-        trace_calls.append((args, kwargs))
-        if args: return args[0]
-        return lambda function: function
+    def fake_wrap(*args, **kwargs):
+        wrap_calls.append((args, kwargs))
+        return args[0]
 
-    monkeypatch.setattr(_core, "trace", fake_trace)
+    monkeypatch.setattr(_core, "_wrap_observed_function", fake_wrap)
     decorator = _core.observe(
         name="story",
         metadata={"source": "langfuse", "override": "metadata"},
@@ -41,9 +39,9 @@ def test_observe_merges_attributes_and_metadata(monkeypatch) -> None:
     wrapped = decorator(target)
 
     assert wrapped is target
-    assert trace_calls == [
+    assert wrap_calls == [
         (
-            (),
+            (target,),
             {
                 "span_name": "story",
                 "attributes": {
@@ -58,19 +56,20 @@ def test_observe_merges_attributes_and_metadata(monkeypatch) -> None:
 
 
 def test_observe_capture_output_passes_through(monkeypatch) -> None:
-    trace_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    wrap_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    target = lambda: None
 
-    def fake_trace(*args, **kwargs):
-        trace_calls.append((args, kwargs))
-        if args: return args[0]
-        return lambda function: function
+    def fake_wrap(*args, **kwargs):
+        wrap_calls.append((args, kwargs))
+        return args[0]
 
-    monkeypatch.setattr(_core, "trace", fake_trace)
-    _core.observe(capture_output=True)
+    monkeypatch.setattr(_core, "_wrap_observed_function", fake_wrap)
+    decorator = _core.observe(capture_output=True)
+    decorator(target)
 
-    assert trace_calls == [
+    assert wrap_calls == [
         (
-            (),
+            (target,),
             {
                 "span_name": None,
                 "attributes": None,

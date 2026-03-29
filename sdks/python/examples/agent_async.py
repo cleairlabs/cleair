@@ -20,6 +20,6 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    # cleair.init()
+    # cleair.init(service_name="my-agent", cleair_api_key="<key>")
     cleair.init(cleair.CleairConfig(service_name="my-agent", exporter="console"))
     asyncio.run(main())
