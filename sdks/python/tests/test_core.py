@@ -29,11 +29,6 @@ def test_init_console_exporter():
     assert _core._initialized is True
 
 
-def test_init_terminal_exporter():
-    _core.init(CleairConfig(exporter="terminal"))
-    assert _core._initialized is True
-
-
 def test_init_default_cleair_http_uses_api_key(monkeypatch):
     fake_processor = MagicMock()
     monkeypatch.setattr("cleair.exporters.cleair_http.CleairHttpSpanProcessor", fake_processor)
@@ -66,7 +61,7 @@ def test_init_prefers_config_exporter_over_api_key(monkeypatch):
 def test_init_only_runs_once():
     _core.init(CleairConfig(exporter="console"))
     # second call with a different exporter is ignored
-    _core.init(CleairConfig(exporter="terminal"))
+    _core.init(cleair_api_key="test-key")
     assert _core._initialized is True
 
 
@@ -87,25 +82,25 @@ def test_span_records_exception_and_reraises(monkeypatch):
     assert args[0].status_code == StatusCode.ERROR
 
 
-# --- _coerce_attribute_value ---
+# --- _format_attribute_value ---
 
 
 def test_coerce_passes_primitives_through():
-    assert _core._coerce_attribute_value("hello") == "hello"
-    assert _core._coerce_attribute_value(42) == 42
-    assert _core._coerce_attribute_value(3.14) == 3.14
-    assert _core._coerce_attribute_value(True) is True
+    assert _core._format_attribute_value("hello") == "hello"
+    assert _core._format_attribute_value(42) == 42
+    assert _core._format_attribute_value(3.14) == 3.14
+    assert _core._format_attribute_value(True) is True
 
 
 def test_coerce_repr_for_non_primitives():
-    assert _core._coerce_attribute_value([1, 2]) == "[1, 2]"
-    assert _core._coerce_attribute_value({"a": 1}) == "{'a': 1}"
+    assert _core._format_attribute_value([1, 2]) == "[1, 2]"
+    assert _core._format_attribute_value({"a": 1}) == "{'a': 1}"
 
 
-# --- trace() async path ---
+# --- observe() async path ---
 
 
-def test_trace_async_wraps_coroutine(monkeypatch):
+def test_observe_async_wraps_coroutine(monkeypatch):
     fake_span = MagicMock()
     fake_span.__enter__ = MagicMock(return_value=fake_span)
     fake_span.__exit__ = MagicMock(return_value=False)
@@ -114,7 +109,7 @@ def test_trace_async_wraps_coroutine(monkeypatch):
     fake_tracer.start_as_current_span.return_value = fake_span
     monkeypatch.setattr(_core, "_tracer", lambda: fake_tracer)
 
-    @_core.trace
+    @_core.observe
     async def greet(name: str) -> str: return f"hi {name}"
 
     assert greet.__name__ == "greet"
@@ -122,7 +117,7 @@ def test_trace_async_wraps_coroutine(monkeypatch):
     assert result == "hi world"
 
 
-def test_trace_async_with_kwargs(monkeypatch):
+def test_observe_async_with_kwargs(monkeypatch):
     fake_span = MagicMock()
     fake_span.__enter__ = MagicMock(return_value=fake_span)
     fake_span.__exit__ = MagicMock(return_value=False)
@@ -130,7 +125,7 @@ def test_trace_async_with_kwargs(monkeypatch):
     fake_tracer.start_as_current_span.return_value = fake_span
     monkeypatch.setattr(_core, "_tracer", lambda: fake_tracer)
 
-    @_core.trace(span_name="custom", capture_output=True)
+    @_core.observe(name="custom", capture_output=True)
     async def compute() -> int: return 99
 
     result = asyncio.run(compute())

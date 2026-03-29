@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from opentelemetry import trace as otel_trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import Status, StatusCode
 
 from cleair._config import CleairConfig
@@ -20,58 +20,53 @@ _initialized = False
 _init_lock = threading.Lock()
 
 
+def _resolve_config(config: CleairConfig | None = None,
+                    *,
+                    service_name: str | None = None,
+                    exporter: str | None = None,
+                    cleair_http_endpoint: str | None = None,
+                    cleair_api_key: str | None = None,) -> CleairConfig:
+    base_config = config or CleairConfig.from_env()
+    return CleairConfig(
+        service_name=base_config.service_name if service_name is None else service_name,
+        exporter=base_config.exporter if exporter is None else exporter,
+        cleair_http_endpoint=base_config.cleair_http_endpoint if cleair_http_endpoint is None else cleair_http_endpoint,
+        cleair_api_key=base_config.cleair_api_key if cleair_api_key is None else cleair_api_key,
+    )
+
+
+def _build_span_processor(config: CleairConfig):
+    if config.exporter == "console":
+        from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+        return BatchSpanProcessor(ConsoleSpanExporter())
+
+    if config.exporter == "cleair_http":
+        if not config.cleair_api_key:
+            raise ValueError(
+                "cleair_api_key is required when using exporter='cleair_http'.\n"
+                "Create a pane in the cleair UI and pass its key:\n"
+                "  CleairConfig(exporter='cleair_http', cleair_api_key='<key>')\n"
+                "or pass cleair_api_key='<key>' to cleair.init(...).")
+        from cleair.exporters.cleair_http import CleairHttpSpanProcessor
+        return CleairHttpSpanProcessor(endpoint=config.cleair_http_endpoint, service_name=config.service_name, api_key=config.cleair_api_key)
+    raise ValueError(f"Unknown exporter: {config.exporter!r} (use 'cleair_http' or 'console')")
+
+
 def init(config: CleairConfig | None = None, 
          *,
          service_name: str | None = None,
          exporter: str | None = None,
-         otlp_http_endpoint: str | None = None,
          cleair_http_endpoint: str | None = None,
-         cleair_api_key: str | None = None,
-         terminal_stream: bool | None = None,) -> None:
+         cleair_api_key: str | None = None,) -> None:
     global _initialized
     if _initialized: return # fast path (double-check locking pattern)
     with _init_lock:
         if _initialized: return # re-check
-
-        resolved_config = config or CleairConfig.from_env()
-        resolved_config = CleairConfig(
-            service_name=resolved_config.service_name if service_name is None else service_name,
-            exporter=resolved_config.exporter if exporter is None else exporter,
-            otlp_http_endpoint=(resolved_config.otlp_http_endpoint if otlp_http_endpoint is None else otlp_http_endpoint),
-            cleair_http_endpoint=(resolved_config.cleair_http_endpoint if cleair_http_endpoint is None else cleair_http_endpoint),
-            cleair_api_key=resolved_config.cleair_api_key if cleair_api_key is None else cleair_api_key,
-            terminal_stream=resolved_config.terminal_stream if terminal_stream is None else terminal_stream,
-        )
+        resolved_config = _resolve_config(config, service_name=service_name, exporter=exporter, cleair_http_endpoint=cleair_http_endpoint,
+                                          cleair_api_key=cleair_api_key)
         resource = Resource.create({"service.name": resolved_config.service_name})
         provider = TracerProvider(resource=resource)
-        if resolved_config.exporter == "console":
-            from opentelemetry.sdk.trace.export import ConsoleSpanExporter
-            span_exporter = ConsoleSpanExporter()
-            provider.add_span_processor(BatchSpanProcessor(span_exporter))
-        elif resolved_config.exporter == "terminal":
-            from cleair.exporters import CleairConsoleSpanExporter
-            span_exporter = CleairConsoleSpanExporter(stream=resolved_config.terminal_stream)
-            provider.add_span_processor(SimpleSpanProcessor(span_exporter))
-        elif resolved_config.exporter == "otlp_http":
-            from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-            span_exporter = OTLPSpanExporter(endpoint=resolved_config.otlp_http_endpoint)
-            provider.add_span_processor(BatchSpanProcessor(span_exporter))
-        elif resolved_config.exporter == "cleair_http":
-            if not resolved_config.cleair_api_key:
-                raise ValueError(
-                    "cleair_api_key is required when using exporter='cleair_http'.\n"
-                    "Create a pane in the cleair UI and pass its key:\n"
-                    "  CleairConfig(exporter='cleair_http', cleair_api_key='<key>')\n"
-                    "or pass cleair_api_key='<key>' to cleair.init(...).")
-            from cleair.exporters.cleair_http import CleairHttpSpanProcessor
-            provider.add_span_processor(CleairHttpSpanProcessor(
-                endpoint=resolved_config.cleair_http_endpoint,
-                service_name=resolved_config.service_name,
-                api_key=resolved_config.cleair_api_key,
-            ))
-        else:
-            raise ValueError(f"Unknown exporter: {resolved_config.exporter!r} (use 'otlp_http', 'cleair_http', 'console', or 'terminal')")
-
+        provider.add_span_processor(_build_span_processor(resolved_config))
         otel_trace.set_tracer_provider(provider)
         _initialized = True
 
@@ -93,69 +88,70 @@ def span(name: str, *, attributes: dict[str, str | int | float | bool] | None = 
             raise
 
 
-def _coerce_attribute_value(value: object) -> str | int | float | bool:
+def _format_attribute_value(value: object) -> str | int | float | bool:
     if isinstance(value, (str, int, float, bool)):
         return value
     return repr(value)
 
 
-def trace_call(function, /,
+def trace_call(function, 
+               /,
                *args,
                span_name: str | None = None,
                attributes: dict[str, str | int | float | bool] | None = None,
                capture_output: bool = False,
                **kwargs,):
     name = span_name or getattr(function, "__qualname__", getattr(function, "__name__", "call"))
-    with span(name, attributes=attributes) as sh:
+    with span(name, attributes=attributes) as span_handle:
         start = time.perf_counter()
         try:
             result = function(*args, **kwargs)
             if capture_output:
-                sh.add_event("function.output", {"value": _coerce_attribute_value(result)})
+                span_handle.add_event("function.output", {"value": _format_attribute_value(result)})
             return result
         finally:
-            sh.set_attribute("duration_ms", (time.perf_counter() - start) * 1000.0)
+            span_handle.set_attribute("duration_ms", (time.perf_counter() - start) * 1000.0)
 
 
-async def _trace_call_async(function, /, 
+async def _trace_call_async(function, 
+                            /, 
                             *args,
                             span_name: str | None = None, 
                             attributes: dict[str, str | int | float | bool] | None = None, 
                             capture_output: bool = False,
                             **kwargs,):
     name = span_name or getattr(function, "__qualname__", getattr(function, "__name__", "call"))
-    with span(name, attributes=attributes) as sh:
+    with span(name, attributes=attributes) as span_handle:
         start = time.perf_counter()
         try:
             result = await function(*args, **kwargs)
             if capture_output:
-                sh.add_event("function.output", {"value": _coerce_attribute_value(result)})
+                span_handle.add_event("function.output", {"value": _format_attribute_value(result)})
             return result
         finally:
-            sh.set_attribute("duration_ms", (time.perf_counter() - start) * 1000.0)
+            span_handle.set_attribute("duration_ms", (time.perf_counter() - start) * 1000.0)
 
 
-def trace(function=None, /, *,
-          span_name: str | None = None,
-          attributes: dict[str, str | int | float | bool] | None = None,
-          capture_output: bool = False,):
-    def decorator(target_function):
-        if inspect.iscoroutinefunction(target_function):
-            @functools.wraps(target_function)
-            async def wrapped_async(*args, **kwargs):
-                return await _trace_call_async(target_function, *args, span_name=span_name, attributes=attributes, 
-                                               capture_output=capture_output, **kwargs)
-            return wrapped_async
+def _wrap_observed_function(function,
+                            /,
+                            *,
+                            span_name: str | None = None,
+                            attributes: dict[str, str | int | float | bool] | None = None,
+                            capture_output: bool = False,):
+    if inspect.iscoroutinefunction(function):
+        @functools.wraps(function)
+        async def wrapped_async(*args, **kwargs):
+            return await _trace_call_async(function, *args, span_name=span_name, attributes=attributes, capture_output=capture_output, **kwargs)
+        return wrapped_async
 
-        @functools.wraps(target_function)
-        def wrapped_sync(*args, **kwargs):
-            return trace_call(target_function, *args, span_name=span_name, attributes=attributes, capture_output=capture_output, **kwargs)
-        return wrapped_sync
-    if function is None: return decorator
-    return decorator(function)
+    @functools.wraps(function)
+    def wrapped_sync(*args, **kwargs):
+        return trace_call(function, *args, span_name=span_name, attributes=attributes, capture_output=capture_output, **kwargs)
+    return wrapped_sync
 
 
-def _merge_observe_attributes(*, attributes: dict[str, str | int | float | bool] | None, 
+def _merge_observe_attributes(*,
+                              attributes: dict[str, str | int | float | bool] | None, 
                               metadata: dict[str, str | int | float | bool] | None, 
                               session_id: str | None,) -> dict[str, str | int | float | bool] | None:
     resolved_attributes: dict[str, str | int | float | bool] = {}
@@ -165,7 +161,9 @@ def _merge_observe_attributes(*, attributes: dict[str, str | int | float | bool]
     return resolved_attributes or None
 
 
-def observe(function=None, /, *,
+def observe(function=None, 
+            /,
+            *,
             span_name: str | None = None,
             name: str | None = None,
             attributes: dict[str, str | int | float | bool] | None = None,
@@ -175,5 +173,5 @@ def observe(function=None, /, *,
     resolved_span_name = span_name or name
     resolved_attributes = _merge_observe_attributes(attributes=attributes, metadata=metadata, session_id=session_id)
     if function is None:
-        return trace(span_name=resolved_span_name, attributes=resolved_attributes, capture_output=capture_output)
-    return trace(function, span_name=resolved_span_name, attributes=resolved_attributes, capture_output=capture_output)
+        return functools.partial(_wrap_observed_function, span_name=resolved_span_name, attributes=resolved_attributes, capture_output=capture_output)
+    return _wrap_observed_function(function, span_name=resolved_span_name, attributes=resolved_attributes, capture_output=capture_output)
