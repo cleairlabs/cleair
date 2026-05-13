@@ -9,10 +9,10 @@ in the event stream (OTLP exporters emit children before parents on completion).
 from __future__ import annotations
 
 
-def _span_kind(attributes: list[dict]) -> str:
-    """Map cleair.kind span attribute to a FlowNode kind, defaulting to 'tool'."""
+def _span_type(attributes: list[dict]) -> str:
+    """Map cleair.type span attribute to a FlowNode type, defaulting to 'tool'."""
     for attr in attributes:
-        if attr.get("key") == "cleair.kind":
+        if attr.get("key") == "cleair.type":
             return str(attr.get("value", {}).get("stringValue", "tool"))
     return "tool"
 
@@ -45,7 +45,7 @@ def _span_to_events(span: dict, service_name: str) -> list[dict]:
                 "parentId": parent_span_id,
                 "label": name,
                 "subtitle": service_name,
-                "kind": _span_kind(attributes),
+                "type": _span_type(attributes),
                 "whatDescription": _str_attr(attributes, "cleair.what", name),
             },
         },

@@ -20,7 +20,7 @@ def test_otlp_payload_to_run_events_excludes_why_description() -> None:
                                 "startTimeUnixNano": "1000",
                                 "endTimeUnixNano": "2001000",
                                 "attributes": [
-                                    {"key": "cleair.kind", "value": {"stringValue": "agent"}},
+                                    {"key": "cleair.type", "value": {"stringValue": "agent"}},
                                     {"key": "cleair.what", "value": {"stringValue": "Loads dashboard data"}},
                                     {"key": "cleair.why", "value": {"stringValue": "No longer exposed"}},
                                 ],
@@ -46,7 +46,7 @@ def test_otlp_payload_to_run_events_excludes_why_description() -> None:
                         "parentId": None,
                         "label": "LoadDashboard",
                         "subtitle": "frontend",
-                        "kind": "agent",
+                        "type": "agent",
                         "whatDescription": "Loads dashboard data",
                     },
                 },

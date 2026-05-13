@@ -42,37 +42,34 @@ def main() -> None:
         ...
 ```
 
-By default, cleAIr uses the hosted `cleair_http` exporter and requires a
-`cleair_api_key`:
+By default, cleAIr uses `https://api.cleair.ai` and sends streaming events to
+`/v1/events`. The simplest setup is:
 
 ```python
 cleair.init(service_name="my-agent", cleair_api_key="<key>")
 ```
 
-The API key must be passed to `cleair.init(...)` or included in an explicit
-`CleairConfig(...)`. It is not read from environment variables.
+If you skip `cleair.init(...)`, cleAIr reads `CLEAIR_SERVICE_NAME`,
+`CLEAIR_BASE_URL`, `CLEAIR_API_KEY`, and `CLEAIR_ENABLED` from the environment
+when tracing starts.
 
-Available exporters:
-- `cleair_http` (default) — streams to the cleAIr web UI (`https://api.cleair.ai/v1/events`)
-- `console` — OpenTelemetry JSON output
+## Node types
 
-## Node kinds
-
-Control the icon and color shown in the web UI via the `cleair.kind` attribute:
+Control the icon and color shown in the web UI via the `cleair.type` constants:
 
 ```python
-with cleair.span("retrieve", attributes=cleair.kind.SEARCH):
+with cleair.span("retrieve", attributes=cleair.type.SEARCH):
     ...
 
-@cleair.observe(name="plan", attributes=cleair.kind.AGENT)
+@cleair.observe(name="plan", as_type=cleair.type.AGENT)
 def plan(): ...
 ```
 
 | Constant | Icon | Color |
 |---|---|---|
-| `cleair.kind.AGENT` | sparkle | purple |
-| `cleair.kind.SEARCH` | magnifying glass | blue |
-| `cleair.kind.TOOL` | terminal `>_` | orange (default) |
+| `cleair.type.AGENT` | sparkle | purple |
+| `cleair.type.SEARCH` | magnifying glass | blue |
+| `cleair.type.TOOL` | terminal `>_` | orange (default) |
 
 ## License
 

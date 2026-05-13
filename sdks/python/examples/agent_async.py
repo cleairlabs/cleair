@@ -14,12 +14,11 @@ class Agent:
             return f"Echo: {user_input}"
 
 
-@cleair.trace(span_name="agent.request")
+@cleair.observe(name="agent.request")
 async def main() -> None:
     await Agent().run("hello")
 
 
 if __name__ == "__main__":
-    # cleair.init(service_name="my-agent", cleair_api_key="<key>")
-    cleair.init(cleair.CleairConfig(service_name="my-agent", exporter="console"))
+    cleair.init(service_name="my-agent", cleair_api_key="<key>")
     asyncio.run(main())

@@ -1,4 +1,4 @@
-import { kindColors } from "../kinds";
+import { typeColors } from "../nodeTypes";
 import { formatDuration } from "../traceTree";
 import type { FlowNode, TraceTreeState } from "../types";
 
@@ -21,7 +21,7 @@ export function DetailsPanel({ selectedNode, traceTree, doneCount, errorCount }:
             <div className="detail-section">
               <span className="detail-label">Step</span>
               <div className="detail-step-name">
-                <span className="detail-kind-dot" style={{ background: kindColors[selectedNode.kind] }} />
+                <span className="detail-type-dot" style={{ background: typeColors[selectedNode.type] }} />
                 <span className="detail-value">{selectedNode.label}</span>
               </div>
               <span className="detail-value detail-muted">{selectedNode.subtitle}</span>
