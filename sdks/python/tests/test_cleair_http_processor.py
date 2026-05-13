@@ -14,18 +14,11 @@ def test_on_start_emits_run_started_for_root_span(monkeypatch) -> None:
         captured["run_id"] = run_id
         captured["events"] = events
 
-    processor = CleairHttpSpanProcessor(
-        endpoint="http://localhost:8000/v1/events",
-        service_name="svc",
-    )
+    processor = CleairHttpSpanProcessor(base_url="http://localhost:8000", api_key="key", service_name="svc")
     monkeypatch.setattr(processor, "_post", fake_post)
 
     span = SimpleNamespace(
-        context=SimpleNamespace(
-            is_valid=True,
-            trace_id=0x11111111111111111111111111111111,
-            span_id=0x2222222222222222,
-        ),
+        context=SimpleNamespace(is_valid=True, trace_id=0x11111111111111111111111111111111, span_id=0x2222222222222222),
         parent=None,
         attributes={},
         name="root",
@@ -36,11 +29,7 @@ def test_on_start_emits_run_started_for_root_span(monkeypatch) -> None:
     assert captured["run_id"] == "11111111111111111111111111111111"
     assert events[0] == {"type": "run_started", "runId": captured["run_id"], "runLabel": "svc"}
     assert events[1]["type"] == "node_added"
-    assert events[2] == {
-        "type": "node_status_changed",
-        "nodeId": "2222222222222222",
-        "status": "running",
-    }
+    assert events[2] == {"type": "node_status_changed", "nodeId": "2222222222222222", "status": "running"}
 
 
 def test_on_end_uses_status_code_enum_and_emits_run_completed(monkeypatch) -> None:
@@ -50,18 +39,11 @@ def test_on_end_uses_status_code_enum_and_emits_run_completed(monkeypatch) -> No
         captured["run_id"] = run_id
         captured["events"] = events
 
-    processor = CleairHttpSpanProcessor(
-        endpoint="http://localhost:8000/v1/events",
-        service_name="svc",
-    )
+    processor = CleairHttpSpanProcessor(base_url="http://localhost:8000", api_key="key", service_name="svc")
     monkeypatch.setattr(processor, "_post", fake_post)
 
     span = SimpleNamespace(
-        context=SimpleNamespace(
-            is_valid=True,
-            trace_id=0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
-            span_id=0xBBBBBBBBBBBBBBBB,
-        ),
+        context=SimpleNamespace(is_valid=True, trace_id=0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, span_id=0xBBBBBBBBBBBBBBBB),
         parent=None,
         status=SimpleNamespace(status_code=StatusCode.ERROR),
         start_time=1_000_000,
@@ -72,15 +54,6 @@ def test_on_end_uses_status_code_enum_and_emits_run_completed(monkeypatch) -> No
 
     events = captured["events"]
     assert captured["run_id"] == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    assert events[0] == {
-        "type": "node_status_changed",
-        "nodeId": "bbbbbbbbbbbbbbbb",
-        "status": "error",
-    }
-    assert events[1] == {
-        "type": "node_finished",
-        "nodeId": "bbbbbbbbbbbbbbbb",
-        "durationMs": 4,
-        "output": "done",
-    }
+    assert events[0] == {"type": "node_status_changed", "nodeId": "bbbbbbbbbbbbbbbb", "status": "error"}
+    assert events[1] == {"type": "node_finished", "nodeId": "bbbbbbbbbbbbbbbb", "durationMs": 4, "output": "done"}
     assert events[2] == {"type": "run_completed"}

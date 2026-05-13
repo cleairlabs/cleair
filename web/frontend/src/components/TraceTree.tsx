@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactElement } from "react";
-import { kindColors } from "../kinds";
+import { typeColors } from "../nodeTypes";
 import { formatDuration } from "../traceTree";
-import type { TraceTreeState, FlowNode, FlowNodeKind, FlowNodeStatus } from "../types";
+import type { TraceTreeState, FlowNode, FlowNodeType, FlowNodeStatus } from "../types";
 
 type TraceTreeProps = {
   traceTree: TraceTreeState;
@@ -135,7 +135,7 @@ function HumanIcon() {
   );
 }
 
-const kindIcons: Record<FlowNodeKind, () => ReactElement> = {
+const typeIcons: Record<FlowNodeType, () => ReactElement> = {
   trace:        TraceIcon,
   agent:        AgentIcon,
   intelligence: IntelligenceIcon,
@@ -144,10 +144,10 @@ const kindIcons: Record<FlowNodeKind, () => ReactElement> = {
   human:        HumanIcon,
 };
 
-function KindBadge({ kind }: { kind: FlowNodeKind }) {
-  const Icon = kindIcons[kind];
+function TypeBadge({ type }: { type: FlowNodeType }) {
+  const Icon = typeIcons[type];
   return (
-    <span className={`kind-badge kind-badge-${kind}`} style={{ background: kindColors[kind] }}>
+    <span className={`type-badge type-badge-${type}`} style={{ background: typeColors[type] }}>
       <Icon />
     </span>
   );
@@ -193,11 +193,11 @@ function TraceRow({ entry, isSelected, onSelect }: { entry: TreeEntry; isSelecte
     <button
       type="button"
       className={`trace-row${isSelected ? " trace-row-selected" : ""}`}
-      style={{ "--kind-color": kindColors[node.kind] } as CSSProperties}
+      style={{ "--type-color": typeColors[node.type] } as CSSProperties}
       onClick={onSelect}
     >
       <TreeConnectors depth={depth} isLastChild={isLastChild} ancestorContinues={ancestorContinues} />
-      <KindBadge kind={node.kind} />
+      <TypeBadge type={node.type} />
       <span className="trace-row-label">{node.label}</span>
       {node.durationMs !== null && (
         <span className="trace-row-duration">{formatDuration(node.durationMs)}</span>

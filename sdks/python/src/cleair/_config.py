@@ -4,20 +4,28 @@ import os
 from dataclasses import dataclass
 
 
-DEFAULT_CLEAIR_HTTP_ENDPOINT = "https://api.cleair.ai/v1/events"
+DEFAULT_BASE_URL = "https://api.cleair.ai"
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.lower() not in {"0", "false", "no", "off"}
 
 
 @dataclass(frozen=True)
 class CleairConfig:
     service_name: str = "cleair-app"
-    exporter: str = "cleair_http"  # "cleair_http" or "console"
-    cleair_http_endpoint: str = DEFAULT_CLEAIR_HTTP_ENDPOINT
-    cleair_api_key: str | None = None
+    base_url: str = DEFAULT_BASE_URL
+    api_key: str | None = None
+    enabled: bool = True
 
     @staticmethod
     def from_env() -> "CleairConfig":
         return CleairConfig(
-            service_name=os.getenv("OTEL_SERVICE_NAME", "cleair-app"),
-            exporter=os.getenv("CLEAIR_EXPORTER", "cleair_http"),
-            cleair_http_endpoint=os.getenv("CLEAIR_HTTP_ENDPOINT", DEFAULT_CLEAIR_HTTP_ENDPOINT),
+            service_name=os.getenv("CLEAIR_SERVICE_NAME", "cleair-app"),
+            base_url=os.getenv("CLEAIR_BASE_URL", DEFAULT_BASE_URL),
+            api_key=os.getenv("CLEAIR_API_KEY"),
+            enabled=_env_flag("CLEAIR_ENABLED", True),
         )

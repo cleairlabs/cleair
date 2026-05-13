@@ -11,9 +11,11 @@
 
 - `GET /auth/session`: cookie-backed auth status
 - `POST /auth/verify`: verify the demo access code
+- `POST /channel`: create or return the single API key used by the workspace
+- `GET /agents`: list the latest trace for each `service_name`
 - `POST /v1/traces`: OTLP/JSON trace ingestion
 - `POST /v1/events`: cleair-native event ingestion (streaming)
-- `GET /channels/{api_key}/stream`: SSE stream of latest run events
+- `GET /channel/stream`: SSE stream of live agent updates
 
 ## Run
 
@@ -32,9 +34,8 @@ Runs at `http://localhost:8000`.
 cleair.init(service_name="my-agent", cleair_api_key="<channel-api-key>")
 ```
 
-This is the default path. `cleair_http` sends to `https://api.cleair.ai/v1/events`.
-When sending traces to the local backend instead, set `CLEAIR_HTTP_ENDPOINT=http://localhost:8000/v1/events`.
-For OTLP, terminal, or console output, set an explicit exporter in `cleair.init(...)`.
+cleAIr sends streaming events to `https://api.cleair.ai/v1/events` by default.
+When sending traces to the local backend instead, set `CLEAIR_BASE_URL=http://localhost:8000`.
 
 ## Frontend
 
@@ -46,13 +47,14 @@ Source layout:
 src/
 ├── types.ts              — core data model (FlowNode, TraceTreeState, TraceTreeEvent)
 ├── traceTree.ts          — pure event reducer + display utilities
-├── kinds.ts              — visual config per node kind (colors)
-├── App.tsx               — layout, playback state, details panel
-├── index.css             — dark theme, tree connectors, layout
+├── nodeTypes.ts          — visual config per node type (colors)
+├── App.tsx               — agent list, trace panel, details panel
+├── index.css             — layout and styling
 ├── components/
+│   ├── AgentList.tsx     — agent selector
 │   └── TraceTree.tsx     — waterfall tree renderer
-└── data/
-    └── agentRagRunEvents.ts — demo event stream
+└── hooks/
+    └── useAgents.ts      — API key bootstrap + live agent stream
 ```
 
 Run:

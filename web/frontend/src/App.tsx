@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import { AccessGate } from "./components/AccessGate";
+import { AgentList } from "./components/AgentList";
 import { DetailsPanel } from "./components/DetailsPanel";
-import { useAccessGate } from "./hooks/useAccessGate";
 import { TraceTree } from "./components/TraceTree";
-import { useTraceChannels } from "./hooks/useTraceChannels";
+import { useAccessGate } from "./hooks/useAccessGate";
+import { useAgents } from "./hooks/useAgents";
 import { countNodesByStatus, createEmptyTraceTree } from "./traceTree";
 import type { FlowNode, TraceTreeState } from "./types";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:8000";
+const EMPTY_RUN_ID = "—";
+const EMPTY_RUN_LABEL = "Waiting for trace…";
+
+type ConnectionStatus = "connecting" | "connected" | "offline";
 
 function useTheme() {
   const [dark, setDark] = useState(() => window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -23,12 +28,8 @@ function useTheme() {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
   }, [dark]);
 
-  return { dark, toggle: () => setDark((d) => !d) };
+  return { dark, toggle: () => setDark((currentDark) => !currentDark) };
 }
-const EMPTY_RUN_ID = "—";
-const EMPTY_RUN_LABEL = "Waiting for trace…";
-
-type ConnectionStatus = "connecting" | "connected" | "offline";
 
 function resolveSelectedNodeId(traceTree: TraceTreeState, selectedNodeId: string | null): string | null {
   if (selectedNodeId !== null && traceTree.nodesById[selectedNodeId] !== undefined) {
@@ -60,7 +61,7 @@ function ApiKeyBadge({ apiKey }: { apiKey: string }) {
     <button className="api-key-badge" onClick={copy} title={apiKey}>
       <span className="api-key-label">KEY</span>
       <span className="api-key-value">{apiKey.slice(0, 8)}…</span>
-      <span className="api-key-copy">{copied ? "✓ copied" : "copy"}</span>
+      <span className="api-key-copy">{copied ? "copied" : "copy"}</span>
     </button>
   );
 }
@@ -69,14 +70,13 @@ export default function App() {
   const { dark, toggle: toggleTheme } = useTheme();
   const { accessState, accessCode, setAccessCode, errorMessage, isSubmitting, refreshAccessState, submitAccessCode } =
     useAccessGate(BACKEND_URL);
-  const { panes, activePaneId, setActivePaneId, addPane, removePane, setSelectedNodeId } =
-    useTraceChannels(BACKEND_URL, accessState === "open", refreshAccessState);
+  const { apiKey, agents, selectedAgentName, setSelectedAgentName, connectionStatus, setSelectedNodeId } =
+    useAgents(BACKEND_URL, accessState === "open", refreshAccessState);
 
-  const activePane = panes.find((pane) => pane.id === activePaneId) ?? null;
-  const traceTree = activePane?.traceTree ?? createEmptyTraceTree(EMPTY_RUN_ID, EMPTY_RUN_LABEL);
-  const resolvedSelectedNodeId = resolveSelectedNodeId(traceTree, activePane?.selectedNodeId ?? null);
+  const selectedAgent = agents.find((agent) => agent.serviceName === selectedAgentName) ?? null;
+  const traceTree = selectedAgent?.traceTree ?? createEmptyTraceTree(EMPTY_RUN_ID, EMPTY_RUN_LABEL);
+  const resolvedSelectedNodeId = resolveSelectedNodeId(traceTree, selectedAgent?.selectedNodeId ?? null);
   const selectedNode: FlowNode | null = resolvedSelectedNodeId ? traceTree.nodesById[resolvedSelectedNodeId] : null;
-
   const doneCount = countNodesByStatus(traceTree, "done");
   const errorCount = countNodesByStatus(traceTree, "error");
 
@@ -91,66 +91,41 @@ export default function App() {
           onSubmit={submitAccessCode}
         />
       )}
-      <div className="tab-bar">
-        {panes.map((pane) => (
-          <div
-            key={pane.id}
-            className={`tab${pane.id === activePaneId ? " tab-active" : ""}`}
-            onClick={() => setActivePaneId(pane.id)}
-          >
-            {pane.label}
-            <button
-              className="tab-remove"
-              onClick={(e) => { e.stopPropagation(); removePane(pane.id); }}
-              title="Remove channel"
-            >
-              ×
-            </button>
-          </div>
-        ))}
-        <button className="tab-add" onClick={addPane} title="Add pane">
-          +
-        </button>
-        <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-          {dark ? "☀" : "☽"}
-        </button>
-      </div>
-
-      {activePane === null ? (
-        <div className="empty-state">
-          <p>
-            Click <strong>+</strong> to create a pane, then paste its API key into your SDK init.
-          </p>
+      <header className="top-bar">
+        <div className="top-bar-copy">
+          <span className="panel-label">Trace</span>
+          <span className="top-bar-title">{selectedAgentName ?? EMPTY_RUN_LABEL}</span>
         </div>
-      ) : (
-        <main className="app-layout">
-          <section className="panel">
-            <header className="panel-header">
-              <span className="panel-label">Trace</span>
-              <span className="panel-header-title">{traceTree.runLabel}</span>
-              <div className="spacer" />
-              <ApiKeyBadge apiKey={activePane.apiKey} />
-              <ConnectionIndicator status={activePane.connectionStatus} />
-            </header>
-            {traceTree.nodeIdsInOrder.length === 0 ? (
-              <p className="trace-empty">No trace data yet. Run your agent to see a trace here.</p>
-            ) : (
-              <TraceTree
-                traceTree={traceTree}
-                selectedNodeId={resolvedSelectedNodeId}
-                onSelectNode={setSelectedNodeId}
-              />
-            )}
-          </section>
+        <div className="top-bar-actions">
+          {apiKey !== null && <ApiKeyBadge apiKey={apiKey} />}
+          <ConnectionIndicator status={connectionStatus} />
+          <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+            {dark ? "☀" : "☽"}
+          </button>
+        </div>
+      </header>
+      <main className="app-layout">
+        <section className="panel agent-panel">
+          <header className="panel-header">
+            <span className="panel-label">Agents</span>
+          </header>
+          <AgentList agents={agents} selectedAgentName={selectedAgentName} onSelectAgent={setSelectedAgentName} />
+        </section>
 
-          <DetailsPanel
-            selectedNode={selectedNode}
-            traceTree={traceTree}
-            doneCount={doneCount}
-            errorCount={errorCount}
-          />
-        </main>
-      )}
+        <section className="panel trace-panel">
+          <header className="panel-header">
+            <span className="panel-label">Trace</span>
+            <span className="panel-header-title">{traceTree.runLabel}</span>
+          </header>
+          {traceTree.nodeIdsInOrder.length === 0 ? (
+            <p className="trace-empty">No trace data yet. Run your agent to see a trace here.</p>
+          ) : (
+            <TraceTree traceTree={traceTree} selectedNodeId={resolvedSelectedNodeId} onSelectNode={setSelectedNodeId} />
+          )}
+        </section>
+
+        <DetailsPanel selectedNode={selectedNode} traceTree={traceTree} doneCount={doneCount} errorCount={errorCount} />
+      </main>
     </div>
   );
 }

@@ -1,12 +1,12 @@
 export type FlowNodeStatus = "idle" | "running" | "done" | "warn" | "error";
-export type FlowNodeKind = "trace" | "agent" | "intelligence" | "search" | "tool" | "human";
+export type FlowNodeType = "trace" | "agent" | "intelligence" | "search" | "tool" | "human";
 
 export type FlowNode = {
   id: string;
   parentId: string | null;
   label: string;
   subtitle: string;
-  kind: FlowNodeKind;
+  type: FlowNodeType;
   status: FlowNodeStatus;
   durationMs: number | null;
   output: string | null;

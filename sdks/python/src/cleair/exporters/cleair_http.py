@@ -33,18 +33,22 @@ def _str_attr(attributes: object, key: str, default: str = "") -> str:
         return default
 
 
+def _events_url(base_url: str) -> str:
+    return f"{base_url.rstrip('/')}/v1/events"
+
+
 class CleairHttpSpanProcessor(SpanProcessor):
     """Posts FlowGraphEvents to the cleAIr backend on span start and end."""
 
-    def __init__(self, endpoint: str, service_name: str = "cleair-app", api_key: str | None = None) -> None:
-        self._endpoint = endpoint
-        self._service_name = service_name
+    def __init__(self, base_url: str, api_key: str, service_name: str = "cleair-app") -> None:
+        self._events_url = _events_url(base_url)
         self._api_key = api_key
-
+        self._service_name = service_name
 
     def on_start(self, span: Span, parent_context: Optional[Context] = None) -> None:
         span_context = span.context
-        if span_context is None or not span_context.is_valid: return
+        if span_context is None or not span_context.is_valid:
+            return
 
         run_id = format(span_context.trace_id, TRACE_ID_FORMAT)
         span_id = format(span_context.span_id, SPAN_ID_FORMAT)
@@ -57,7 +61,8 @@ class CleairHttpSpanProcessor(SpanProcessor):
         attrs = span.attributes or {}
 
         events: list[dict] = []
-        if is_root: events.append({"type": "run_started", "runId": run_id, "runLabel": self._service_name})
+        if is_root:
+            events.append({"type": "run_started", "runId": run_id, "runLabel": self._service_name})
         events.append({
             "type": "node_added",
             "node": {
@@ -65,7 +70,7 @@ class CleairHttpSpanProcessor(SpanProcessor):
                 "parentId": parent_span_id,
                 "label": span.name,
                 "subtitle": self._service_name,
-                "kind": _str_attr(attrs, "cleair.kind", "tool"),
+                "type": _str_attr(attrs, "cleair.type", "tool"),
                 "whatDescription": _str_attr(attrs, "cleair.what", span.name),
                 "whyDescription": _str_attr(attrs, "cleair.why"),
             },
@@ -73,10 +78,10 @@ class CleairHttpSpanProcessor(SpanProcessor):
         events.append({"type": "node_status_changed", "nodeId": span_id, "status": "running"})
         self._post(run_id, events)
 
-
     def on_end(self, span: ReadableSpan) -> None:
         span_context = span.context
-        if span_context is None or not span_context.is_valid: return
+        if span_context is None or not span_context.is_valid:
+            return
 
         run_id = format(span_context.trace_id, TRACE_ID_FORMAT)
         span_id = format(span_context.span_id, SPAN_ID_FORMAT)
@@ -88,26 +93,25 @@ class CleairHttpSpanProcessor(SpanProcessor):
         for span_event in span.events or []:
             if span_event.name == "function.output":
                 raw = (span_event.attributes or {}).get("value")
-                if raw is not None: output = str(raw)
+                if raw is not None:
+                    output = str(raw)
                 break
 
         finished: dict = {"type": "node_finished", "nodeId": span_id, "durationMs": duration_ms}
-        if output is not None: finished["output"] = output
+        if output is not None:
+            finished["output"] = output
 
         events: list[dict] = [{"type": "node_status_changed", "nodeId": span_id, "status": status}, finished]
-        if is_root: events.append({"type": "run_completed"})
+        if is_root:
+            events.append({"type": "run_completed"})
         self._post(run_id, events)
-
 
     def _post(self, run_id: str, events: list[dict]) -> None:
         body = json.dumps({"runId": run_id, "events": events}).encode()
-        headers: dict[str, str] = {"Content-Type": CONTENT_TYPE_HEADER}
-        if self._api_key:
-            headers["X-Channel-API-Key"] = self._api_key
         request = urllib.request.Request(
-            self._endpoint,
+            self._events_url,
             data=body,
-            headers=headers,
+            headers={"Content-Type": CONTENT_TYPE_HEADER, "X-Channel-API-Key": self._api_key},
             method="POST",
         )
         try:
@@ -116,7 +120,8 @@ class CleairHttpSpanProcessor(SpanProcessor):
         except urllib.error.URLError:
             pass  # best-effort; do not block the caller
 
+    def shutdown(self) -> None:
+        pass
 
-    def shutdown(self) -> None: pass
-
-    def force_flush(self, timeout_millis: int = 30_000) -> bool: return True
+    def force_flush(self, timeout_millis: int = 30_000) -> bool:
+        return True
