@@ -100,7 +100,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          rsync_args=(-az --exclude .git/ --exclude .github/)
+          rsync_args=(-az --delete --exclude .git/ --exclude .github/)
           ssh_args=(-i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes)
 
           if [[ -n "${DEPLOY_PORT:-}" ]]; then
