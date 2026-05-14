@@ -10,7 +10,6 @@ export type FlowNode = {
   status: FlowNodeStatus;
   durationMs: number | null;
   output: string | null;
-  whatDescription: string;
 };
 
 export type TraceTreeState = {

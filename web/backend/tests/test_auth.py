@@ -112,7 +112,7 @@ def test_agents_overwrite_by_service_name() -> None:
             "runId": "run-1",
             "events": [
                 {"type": "run_started", "runId": "run-1", "runLabel": "Agent"},
-                {"type": "node_added", "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent", "whatDescription": "first"}},
+                {"type": "node_added", "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent"}},
             ],
         },
     )
@@ -123,7 +123,7 @@ def test_agents_overwrite_by_service_name() -> None:
             "runId": "run-2",
             "events": [
                 {"type": "run_started", "runId": "run-2", "runLabel": "Agent"},
-                {"type": "node_added", "node": {"id": "span-2", "parentId": None, "label": "second", "subtitle": "Agent", "type": "agent", "whatDescription": "second"}},
+                {"type": "node_added", "node": {"id": "span-2", "parentId": None, "label": "second", "subtitle": "Agent", "type": "agent"}},
             ],
         },
     )
@@ -138,7 +138,7 @@ def test_agents_overwrite_by_service_name() -> None:
             "runId": "run-2",
             "events": [
                 {"type": "run_started", "runId": "run-2", "runLabel": "Agent"},
-                {"type": "node_added", "node": {"id": "span-2", "parentId": None, "label": "second", "subtitle": "Agent", "type": "agent", "whatDescription": "second"}},
+                {"type": "node_added", "node": {"id": "span-2", "parentId": None, "label": "second", "subtitle": "Agent", "type": "agent"}},
             ],
         }
     ]
@@ -150,7 +150,7 @@ def test_stream_replays_existing_agent_events() -> None:
         "Agent",
         [
             {"type": "run_started", "runId": "run-1", "runLabel": "Agent"},
-            {"type": "node_added", "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent", "whatDescription": "first"}},
+            {"type": "node_added", "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent"}},
         ],
     )
 
@@ -167,6 +167,6 @@ def test_stream_replays_existing_agent_events() -> None:
         "serviceName": "Agent",
         "event": {
             "type": "node_added",
-            "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent", "whatDescription": "first"},
+            "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent"},
         },
     }

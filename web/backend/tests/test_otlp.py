@@ -1,7 +1,7 @@
 from cleair_backend.otlp import otlp_payload_to_run_events
 
 
-def test_otlp_payload_to_run_events_excludes_why_description() -> None:
+def test_otlp_payload_to_run_events_excludes_what_and_why_description() -> None:
     payload = {
         "resourceSpans": [
             {
@@ -21,7 +21,6 @@ def test_otlp_payload_to_run_events_excludes_why_description() -> None:
                                 "endTimeUnixNano": "2001000",
                                 "attributes": [
                                     {"key": "cleair.type", "value": {"stringValue": "agent"}},
-                                    {"key": "cleair.what", "value": {"stringValue": "Loads dashboard data"}},
                                     {"key": "cleair.why", "value": {"stringValue": "No longer exposed"}},
                                 ],
                             }
@@ -47,7 +46,6 @@ def test_otlp_payload_to_run_events_excludes_why_description() -> None:
                         "label": "LoadDashboard",
                         "subtitle": "frontend",
                         "type": "agent",
-                        "whatDescription": "Loads dashboard data",
                     },
                 },
                 {"type": "node_status_changed", "nodeId": "span-1", "status": "running"},

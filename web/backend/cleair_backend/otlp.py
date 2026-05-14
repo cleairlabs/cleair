@@ -46,7 +46,6 @@ def _span_to_events(span: dict, service_name: str) -> list[dict]:
                 "label": name,
                 "subtitle": service_name,
                 "type": _span_type(attributes),
-                "whatDescription": _str_attr(attributes, "cleair.what", name),
             },
         },
         {"type": "node_status_changed", "nodeId": span_id, "status": "running"},

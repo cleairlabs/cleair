@@ -6,7 +6,7 @@ describe("flow graph reducer", () => {
     let graph = createEmptyTraceTree("old-run", "OldAgent");
     graph = applyTraceTreeEvent(graph, {
       type: "node_added",
-      node: { id: "x", parentId: null, label: "X", subtitle: "", type: "agent", whatDescription: "" },
+      node: { id: "x", parentId: null, label: "X", subtitle: "", type: "agent" },
     });
     graph = applyTraceTreeEvent(graph, { type: "run_started", runId: "new-run", runLabel: "NewAgent" });
     expect(graph.runId).toBe("new-run");
@@ -20,12 +20,12 @@ describe("flow graph reducer", () => {
 
     graph = applyTraceTreeEvent(graph, {
       type: "node_added",
-      node: { id: "a", parentId: null, label: "A", subtitle: "start", type: "agent", whatDescription: "start" },
+      node: { id: "a", parentId: null, label: "A", subtitle: "start", type: "agent" },
     });
 
     graph = applyTraceTreeEvent(graph, {
       type: "node_added",
-      node: { id: "b", parentId: "a", label: "B", subtitle: "end", type: "tool", whatDescription: "end" },
+      node: { id: "b", parentId: "a", label: "B", subtitle: "end", type: "tool" },
     });
 
     graph = applyTraceTreeEvent(graph, { type: "node_status_changed", nodeId: "b", status: "running" });
@@ -43,7 +43,7 @@ describe("flow graph reducer", () => {
     let graph = createEmptyTraceTree("run-1", "test");
     const nodeEvent = {
       type: "node_added" as const,
-      node: { id: "x", parentId: null, label: "X", subtitle: "", type: "agent" as const, whatDescription: "" },
+      node: { id: "x", parentId: null, label: "X", subtitle: "", type: "agent" as const },
     };
     graph = applyTraceTreeEvent(graph, nodeEvent);
     graph = applyTraceTreeEvent(graph, nodeEvent);
@@ -54,7 +54,7 @@ describe("flow graph reducer", () => {
     let graph = createEmptyTraceTree("run-1", "test");
     graph = applyTraceTreeEvent(graph, {
       type: "node_added",
-      node: { id: "x", parentId: null, label: "X", subtitle: "", type: "agent", whatDescription: "" },
+      node: { id: "x", parentId: null, label: "X", subtitle: "", type: "agent" },
     });
     const before = graph;
     graph = applyTraceTreeEvent(graph, { type: "node_status_changed", nodeId: "x", status: "idle" });
