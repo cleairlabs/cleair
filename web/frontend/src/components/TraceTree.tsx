@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactElement } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement, type UIEvent } from "react";
 import { typeColors } from "../nodeTypes";
 import { formatDuration } from "../traceTree";
 import type { TraceTreeState, FlowNode, FlowNodeType, FlowNodeStatus } from "../types";
@@ -176,6 +176,10 @@ export function getConnectorClasses(
   });
 }
 
+export function isScrolledToBottom(scrollContainer: Pick<HTMLElement, "scrollHeight" | "clientHeight" | "scrollTop">): boolean {
+  return scrollContainer.scrollHeight - scrollContainer.clientHeight - scrollContainer.scrollTop <= 4;
+}
+
 function TreeConnectors({ depth, isLastChild, ancestorContinues }: Omit<TreeEntry, "node">) {
   const connectorClasses = getConnectorClasses(depth, isLastChild, ancestorContinues);
   return (
@@ -209,9 +213,27 @@ function TraceRow({ entry, isSelected, onSelect }: { entry: TreeEntry; isSelecte
 
 /** Waterfall trace tree — renders the flow graph as an indented, hierarchical list. */
 export function TraceTree({ traceTree, selectedNodeId, onSelectNode }: TraceTreeProps) {
+  const traceListRef = useRef<HTMLDivElement | null>(null);
+  const [isFollowingBottom, setIsFollowingBottom] = useState(true);
   const treeEntries = buildTreeEntries(traceTree);
+
+  useEffect(() => {
+    setIsFollowingBottom(true);
+  }, [traceTree.runId]);
+
+  useLayoutEffect(() => {
+    if (!isFollowingBottom || traceListRef.current === null) {
+      return;
+    }
+    traceListRef.current.scrollTop = traceListRef.current.scrollHeight;
+  }, [isFollowingBottom, treeEntries.length]);
+
+  const onTraceListScroll = (event: UIEvent<HTMLDivElement>) => {
+    setIsFollowingBottom(isScrolledToBottom(event.currentTarget));
+  };
+
   return (
-    <div className="trace-list">
+    <div ref={traceListRef} className="trace-list" onScroll={onTraceListScroll}>
       {treeEntries.map((entry) => (
         <TraceRow
           key={entry.node.id}

@@ -1,12 +1,12 @@
 import type { TraceTreeEvent } from "../types";
 
 export const agentRagRunEvents: TraceTreeEvent[] = [
-  { type: "node_added", node: { id: "root", parentId: null, label: "RetrievalAgent", subtitle: "main pipeline", type: "agent", whatDescription: "Top-level agent run." } },
-  { type: "node_added", node: { id: "plan", parentId: "root", label: "plan", subtitle: "reason about approach", type: "agent", whatDescription: "Agent decides retrieval is needed." } },
-  { type: "node_added", node: { id: "retrieve", parentId: "root", label: "retrieve", subtitle: "fetch context", type: "search", whatDescription: "Retrieval pipeline runs." } },
-  { type: "node_added", node: { id: "vector_search", parentId: "retrieve", label: "vector_search", subtitle: "find candidates", type: "tool", whatDescription: "Queries the vector store for relevant documents." } },
-  { type: "node_added", node: { id: "rerank", parentId: "retrieve", label: "rerank", subtitle: "score by relevance", type: "tool", whatDescription: "Cross-encoder scores each candidate document." } },
-  { type: "node_added", node: { id: "compose", parentId: "root", label: "compose", subtitle: "synthesize answer", type: "agent", whatDescription: "LLM writes the final answer using retrieved context." } },
+  { type: "node_added", node: { id: "root", parentId: null, label: "RetrievalAgent", subtitle: "main pipeline", type: "agent" } },
+  { type: "node_added", node: { id: "plan", parentId: "root", label: "plan", subtitle: "reason about approach", type: "agent" } },
+  { type: "node_added", node: { id: "retrieve", parentId: "root", label: "retrieve", subtitle: "fetch context", type: "search" } },
+  { type: "node_added", node: { id: "vector_search", parentId: "retrieve", label: "vector_search", subtitle: "find candidates", type: "tool" } },
+  { type: "node_added", node: { id: "rerank", parentId: "retrieve", label: "rerank", subtitle: "score by relevance", type: "tool" } },
+  { type: "node_added", node: { id: "compose", parentId: "root", label: "compose", subtitle: "synthesize answer", type: "agent" } },
 
   { type: "node_status_changed", nodeId: "root", status: "running" },
   { type: "node_status_changed", nodeId: "plan", status: "running" },

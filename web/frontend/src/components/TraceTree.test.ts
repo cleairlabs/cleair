@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { getConnectorClasses } from "./TraceTree";
+import { getConnectorClasses, isScrolledToBottom } from "./TraceTree";
 
 describe("getConnectorClasses", () => {
   test("uses the parent-continuation flag for the first pass-through column", () => {
@@ -20,5 +20,19 @@ describe("getConnectorClasses", () => {
       "connector-pass",
       "connector-last",
     ]);
+  });
+});
+
+describe("isScrolledToBottom", () => {
+  test("returns true when the scroll position is at the bottom", () => {
+    expect(isScrolledToBottom({ scrollHeight: 400, clientHeight: 100, scrollTop: 300 })).toBe(true);
+  });
+
+  test("returns true when the scroll position is within the bottom tolerance", () => {
+    expect(isScrolledToBottom({ scrollHeight: 400, clientHeight: 100, scrollTop: 297 })).toBe(true);
+  });
+
+  test("returns false when the user has scrolled away from the bottom", () => {
+    expect(isScrolledToBottom({ scrollHeight: 400, clientHeight: 100, scrollTop: 280 })).toBe(false);
   });
 });

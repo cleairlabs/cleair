@@ -71,7 +71,6 @@ class CleairHttpSpanProcessor(SpanProcessor):
                 "label": span.name,
                 "subtitle": self._service_name,
                 "type": _str_attr(attrs, "cleair.type", "tool"),
-                "whatDescription": _str_attr(attrs, "cleair.what", span.name),
                 "whyDescription": _str_attr(attrs, "cleair.why"),
             },
         })
