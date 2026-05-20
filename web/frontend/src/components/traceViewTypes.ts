@@ -1,6 +1,6 @@
 import type { TraceTreeState } from "../types";
 
-export type TraceViewName = "tree";
+export type TraceViewName = "tree" | "graph";
 
 export type TraceViewProps = {
   traceTree: TraceTreeState;

@@ -425,6 +425,30 @@ body {
   padding: 8px 0;
 }
 
+.trace-view-switcher {
+  margin-left: auto;
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.trace-view-switcher-button {
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 4px 10px;
+}
+
+.trace-view-switcher-button-selected {
+  background: var(--surface-selected);
+  color: var(--text);
+}
+
 .trace-row {
   display: flex;
   align-items: center;
@@ -447,6 +471,23 @@ body {
 .trace-row-selected {
   background: var(--surface-selected) !important;
   border-left-color: var(--type-color);
+}
+
+.trace-graph {
+  flex: 1;
+  min-height: 0;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--surface-hover) 28%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 84%, transparent), transparent 24%);
+}
+
+.trace-graph-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.trace-graph-canvas canvas {
+  outline: none;
 }
 
 .tree-connectors {
