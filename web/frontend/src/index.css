@@ -476,9 +476,7 @@ body {
 .trace-graph {
   flex: 1;
   min-height: 0;
-  background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--surface-hover) 28%, transparent), transparent 34%),
-    linear-gradient(180deg, color-mix(in srgb, var(--surface) 84%, transparent), transparent 24%);
+  background: var(--bg);
 }
 
 .trace-graph-canvas {
