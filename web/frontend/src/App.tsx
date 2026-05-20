@@ -70,6 +70,7 @@ function ApiKeyBadge({ apiKey }: { apiKey: string }) {
 
 export default function App() {
   const [batchFilter, setBatchFilter] = useState("");
+  const [traceView, setTraceView] = useState<TraceViewName>(DEFAULT_TRACE_VIEW);
   const { dark, toggle: toggleTheme } = useTheme();
   const { accessState, accessCode, setAccessCode, errorMessage, isSubmitting, refreshAccessState, submitAccessCode } =
     useAccessGate(BACKEND_URL);
@@ -140,12 +141,26 @@ export default function App() {
           <header className="panel-header">
             <span className="panel-label">Trace</span>
             <span className="panel-header-title">{traceTree.runLabel}</span>
+            <div className="trace-view-switcher">
+              <button
+                className={`trace-view-switcher-button${traceView === "tree" ? " trace-view-switcher-button-selected" : ""}`}
+                onClick={() => setTraceView("tree")}
+              >
+                Tree
+              </button>
+              <button
+                className={`trace-view-switcher-button${traceView === "graph" ? " trace-view-switcher-button-selected" : ""}`}
+                onClick={() => setTraceView("graph")}
+              >
+                Graph
+              </button>
+            </div>
           </header>
           {traceTree.nodeIdsInOrder.length === 0 ? (
             <p className="trace-empty">No trace data yet. Run your agent to see a trace here.</p>
           ) : (
             <TraceView
-              view={DEFAULT_TRACE_VIEW}
+              view={traceView}
               traceTree={traceTree}
               selectedNodeId={resolvedSelectedNodeId}
               onSelectNode={setSelectedNodeId}
