@@ -67,18 +67,27 @@ function ApiKeyBadge({ apiKey }: { apiKey: string }) {
 }
 
 export default function App() {
+  const [batchFilter, setBatchFilter] = useState("");
   const { dark, toggle: toggleTheme } = useTheme();
   const { accessState, accessCode, setAccessCode, errorMessage, isSubmitting, refreshAccessState, submitAccessCode } =
     useAccessGate(BACKEND_URL);
-  const { apiKey, agents, selectedAgentName, setSelectedAgentName, connectionStatus, setSelectedNodeId } =
+  const { apiKey, agents, selectedRunId, setSelectedRunId, connectionStatus, setSelectedNodeId, deleteRun } =
     useAgents(BACKEND_URL, accessState === "open", refreshAccessState);
 
-  const selectedAgent = agents.find((agent) => agent.serviceName === selectedAgentName) ?? null;
+  const batchIds = [...new Set(agents.flatMap((agent) => agent.batchId === null ? [] : [agent.batchId]))];
+  const filteredAgents = batchFilter === "" ? agents : agents.filter((agent) => agent.batchId === batchFilter);
+  const selectedAgent = filteredAgents.find((agent) => agent.runId === selectedRunId) ?? filteredAgents[0] ?? null;
   const traceTree = selectedAgent?.traceTree ?? createEmptyTraceTree(EMPTY_RUN_ID, EMPTY_RUN_LABEL);
   const resolvedSelectedNodeId = resolveSelectedNodeId(traceTree, selectedAgent?.selectedNodeId ?? null);
   const selectedNode: FlowNode | null = resolvedSelectedNodeId ? traceTree.nodesById[resolvedSelectedNodeId] : null;
   const doneCount = countNodesByStatus(traceTree, "done");
   const errorCount = countNodesByStatus(traceTree, "error");
+
+  useEffect(() => {
+    if (selectedAgent !== null && selectedAgent.runId !== selectedRunId) {
+      setSelectedRunId(selectedAgent.runId);
+    }
+  }, [selectedAgent, selectedRunId, setSelectedRunId]);
 
   return (
     <div className="app-root">
@@ -94,7 +103,7 @@ export default function App() {
       <header className="top-bar">
         <div className="top-bar-copy">
           <span className="panel-label">Trace</span>
-          <span className="top-bar-title">{selectedAgentName ?? EMPTY_RUN_LABEL}</span>
+          <span className="top-bar-title">{selectedAgent?.displayName ?? EMPTY_RUN_LABEL}</span>
         </div>
         <div className="top-bar-actions">
           {apiKey !== null && <ApiKeyBadge apiKey={apiKey} />}
@@ -108,8 +117,21 @@ export default function App() {
         <section className="panel agent-panel">
           <header className="panel-header">
             <span className="panel-label">Agents</span>
+            <select className="batch-filter" value={batchFilter} onChange={(event) => setBatchFilter(event.target.value)}>
+              <option value="">All batches</option>
+              {batchIds.map((batchId) => (
+                <option key={batchId} value={batchId}>
+                  {batchId}
+                </option>
+              ))}
+            </select>
           </header>
-          <AgentList agents={agents} selectedAgentName={selectedAgentName} onSelectAgent={setSelectedAgentName} />
+          <AgentList
+            agents={filteredAgents}
+            selectedRunId={selectedAgent?.runId ?? null}
+            onSelectAgent={setSelectedRunId}
+            onDeleteAgent={(runId) => void deleteRun(runId)}
+          />
         </section>
 
         <section className="panel trace-panel">

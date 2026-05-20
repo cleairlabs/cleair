@@ -4,12 +4,13 @@ import functools
 import inspect
 import threading
 import time
+from contextvars import ContextVar
 from contextlib import contextmanager
 
 from opentelemetry import trace as otel_trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.trace import Status, StatusCode
+from opentelemetry.trace import INVALID_SPAN, Status, StatusCode, set_span_in_context
 
 from cleair._config import CleairConfig
 from cleair.adapters._base import Adapter
@@ -19,6 +20,7 @@ from cleair.exporters.cleair_http import CleairHttpSpanProcessor
 _config: CleairConfig | None = None
 _provider: TracerProvider | None = None
 _provider_lock = threading.Lock()
+_run_attributes: ContextVar[dict[str, str | int | float | bool] | None] = ContextVar("cleair_run_attributes", default=None)
 
 
 def _format_attribute_value(value: object) -> str | int | float | bool:
@@ -39,6 +41,21 @@ def _merge_observe_attributes(*,
     if session_id is not None:
         resolved_attributes["session.id"] = session_id
     return resolved_attributes or None
+
+
+def _resolve_span_attributes(attributes: dict[str, str | int | float | bool] | None) -> dict[str, str | int | float | bool] | None:
+    inherited_attributes = _run_attributes.get()
+    if inherited_attributes is None:
+        return attributes
+    if attributes is None:
+        return dict(inherited_attributes)
+    return {**inherited_attributes, **attributes}
+
+
+def _run_child_attributes(attributes: dict[str, str | int | float | bool] | None) -> dict[str, str | int | float | bool] | None:
+    if attributes is None:
+        return None
+    return {key: value for key, value in attributes.items() if key != "cleair.type"} or None
 
 
 def _resolve_config() -> CleairConfig:
@@ -94,19 +111,37 @@ def _tracer():
 
 
 @contextmanager
-def span(name: str, *, attributes: dict[str, str | int | float | bool] | None = None):
+def span(name: str, *, attributes: dict[str, str | int | float | bool] | None = None, new_root: bool = False):
     config = _resolve_config()
     if not config.enabled:
         yield None
         return
     tracer = _tracer()
-    with tracer.start_as_current_span(name, attributes=attributes) as span_handle:
+    span_attributes = _resolve_span_attributes(attributes)
+    span_kwargs = {"attributes": span_attributes}
+    if new_root:
+        span_kwargs["context"] = set_span_in_context(INVALID_SPAN)
+    with tracer.start_as_current_span(name, **span_kwargs) as span_handle:
         try:
             yield span_handle
         except Exception as exception:
             span_handle.record_exception(exception)
             span_handle.set_status(Status(StatusCode.ERROR))
             raise
+
+
+@contextmanager
+def start_run(name: str,
+              *,
+              metadata: dict[str, str | int | float | bool] | None = None,
+              session_id: str | None = None,):
+    run_attributes = _merge_observe_attributes(attributes={"cleair.type": "trace"}, metadata=metadata, session_id=session_id)
+    token = _run_attributes.set(_run_child_attributes(run_attributes))
+    try:
+        with span(name, attributes=run_attributes, new_root=True) as span_handle:
+            yield span_handle
+    finally:
+        _run_attributes.reset(token)
 
 
 def trace_call(function,
