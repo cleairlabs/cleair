@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { AccessGate } from "./components/AccessGate";
 import { AgentList } from "./components/AgentList";
 import { DetailsPanel } from "./components/DetailsPanel";
-import { TraceTree } from "./components/TraceTree";
+import { TraceView } from "./components/TraceView";
+import type { TraceViewName } from "./components/traceViewTypes";
 import { useAccessGate } from "./hooks/useAccessGate";
 import { useAgents } from "./hooks/useAgents";
 import { countNodesByStatus, createEmptyTraceTree } from "./traceTree";
@@ -11,6 +12,7 @@ import type { FlowNode, TraceTreeState } from "./types";
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:8000";
 const EMPTY_RUN_ID = "—";
 const EMPTY_RUN_LABEL = "Waiting for trace…";
+const DEFAULT_TRACE_VIEW: TraceViewName = "tree";
 
 type ConnectionStatus = "connecting" | "connected" | "offline";
 
@@ -142,7 +144,12 @@ export default function App() {
           {traceTree.nodeIdsInOrder.length === 0 ? (
             <p className="trace-empty">No trace data yet. Run your agent to see a trace here.</p>
           ) : (
-            <TraceTree traceTree={traceTree} selectedNodeId={resolvedSelectedNodeId} onSelectNode={setSelectedNodeId} />
+            <TraceView
+              view={DEFAULT_TRACE_VIEW}
+              traceTree={traceTree}
+              selectedNodeId={resolvedSelectedNodeId}
+              onSelectNode={setSelectedNodeId}
+            />
           )}
         </section>
 

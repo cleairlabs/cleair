@@ -2,12 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import { typeColors } from "../nodeTypes";
 import { formatDuration } from "../traceTree";
 import type { TraceTreeState, FlowNode, FlowNodeType, FlowNodeStatus } from "../types";
-
-type TraceTreeProps = {
-  traceTree: TraceTreeState;
-  selectedNodeId: string | null;
-  onSelectNode: (nodeId: string) => void;
-};
+import type { TraceViewProps } from "./traceViewTypes";
 
 /** A node ready for rendering, annotated with tree structure metadata. */
 type TreeEntry = {
@@ -212,7 +207,7 @@ function TraceRow({ entry, isSelected, onSelect }: { entry: TreeEntry; isSelecte
 }
 
 /** Waterfall trace tree — renders the flow graph as an indented, hierarchical list. */
-export function TraceTree({ traceTree, selectedNodeId, onSelectNode }: TraceTreeProps) {
+export function TraceTree({ traceTree, selectedNodeId, onSelectNode }: TraceViewProps) {
   const traceListRef = useRef<HTMLDivElement | null>(null);
   const [isFollowingBottom, setIsFollowingBottom] = useState(true);
   const treeEntries = buildTreeEntries(traceTree);
