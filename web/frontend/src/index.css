@@ -147,7 +147,10 @@ body {
 .access-gate-submit,
 .theme-toggle,
 .api-key-badge,
-.agent-list-item {
+.agent-list-item,
+.agent-list-select,
+.agent-list-delete,
+.batch-filter {
   font: inherit;
 }
 
@@ -192,7 +195,8 @@ body {
 }
 
 .theme-toggle,
-.api-key-badge {
+.api-key-badge,
+.batch-filter {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
@@ -211,6 +215,11 @@ body {
   padding: 4px 8px;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.batch-filter {
+  margin-left: auto;
+  padding: 4px 8px;
 }
 
 .api-key-label {
@@ -298,7 +307,6 @@ body {
 .agent-list-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   width: 100%;
   padding: 10px 12px;
@@ -319,10 +327,77 @@ body {
   background: var(--surface-selected);
 }
 
+.agent-list-select,
+.agent-list-delete {
+  border: none;
+  background: transparent;
+  color: inherit;
+}
+
+.agent-list-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+  cursor: pointer;
+  text-align: left;
+}
+
+.agent-list-delete {
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.agent-list-delete:hover {
+  color: var(--status-error);
+}
+
+.agent-list-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.agent-list-confirm-copy {
+  white-space: nowrap;
+}
+
+.agent-list-confirm-button {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 2px 8px;
+}
+
+.agent-list-confirm-button:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.agent-list-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .agent-list-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.agent-list-subtitle {
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 .agent-list-meta,

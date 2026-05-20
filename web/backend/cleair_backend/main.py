@@ -39,7 +39,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -50,6 +50,12 @@ def _resolve_channel(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Missing X-Channel-API-Key header")
     if not store.has_api_key(api_key):
         raise HTTPException(status_code=404, detail="Unknown API key")
+
+
+def _run_metadata(events: list[dict]) -> dict[str, str | int | float | bool]:
+    run_started_event = next((event for event in events if event.get("type") == "run_started"), None)
+    metadata = {} if run_started_event is None else run_started_event.get("metadata", {})
+    return metadata if isinstance(metadata, dict) else {}
 
 
 async def _generate_sse():
@@ -100,6 +106,13 @@ async def list_agents(request: Request) -> list[dict]:
     return store.list_agents()
 
 
+@app.delete("/agents/{run_id}", status_code=204)
+async def delete_agent(request: Request, run_id: str) -> None:
+    require_authenticated_request(request, auth_config)
+    if not store.delete_run(run_id):
+        raise HTTPException(status_code=404, detail="Unknown runId")
+
+
 @app.post("/v1/traces", status_code=204)
 async def ingest_otlp_traces(request: Request) -> None:
     _resolve_channel(request)
@@ -108,9 +121,9 @@ async def ingest_otlp_traces(request: Request) -> None:
         is_new_run = store.start_run(service_name, trace_id)
         events_to_emit = [{"type": "run_started", "runId": trace_id, "runLabel": service_name}] if is_new_run else []
         events_to_emit.extend(span_events)
-        store.append_events(service_name, events_to_emit)
+        store.append_events(trace_id, events_to_emit)
         if any(event.get("type") == "run_completed" for event in span_events):
-            store.mark_completed(service_name)
+            store.mark_completed(trace_id)
         logger.info("Ingested %d events for trace %s (%s)", len(events_to_emit), trace_id, service_name)
 
 
@@ -122,15 +135,15 @@ async def ingest_events(request: Request) -> None:
     events: list[dict] = body["events"]
     run_label = next((event["runLabel"] for event in events if event.get("type") == "run_started"), None)
     if run_label is not None:
-        store.start_run(run_label, run_id)
+        store.start_run(run_label, run_id, metadata=_run_metadata(events))
         service_name = run_label
     else:
         service_name = store.get_service_name_for_run(run_id)
         if service_name is None:
             raise HTTPException(status_code=400, detail="Unknown runId")
-    store.append_events(service_name, events)
+    store.append_events(run_id, events)
     if any(event.get("type") == "run_completed" for event in events):
-        store.mark_completed(service_name)
+        store.mark_completed(run_id)
 
 
 @app.get("/channel/stream")

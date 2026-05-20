@@ -100,7 +100,7 @@ def test_trace_ingest_still_accepts_channel_api_key_without_session() -> None:
     assert response.status_code == 204
 
 
-def test_agents_overwrite_by_service_name() -> None:
+def test_agents_keep_multiple_runs_for_same_service_name() -> None:
     client = TestClient(main.app)
     client.post("/auth/verify", json={"code": "123456"})
     api_key = client.post("/channel").json()["apiKey"]
@@ -111,7 +111,7 @@ def test_agents_overwrite_by_service_name() -> None:
         json={
             "runId": "run-1",
             "events": [
-                {"type": "run_started", "runId": "run-1", "runLabel": "Agent"},
+                {"type": "run_started", "runId": "run-1", "runLabel": "Agent", "metadata": {"agent.id": "agent-1", "batch.id": "batch-1"}},
                 {"type": "node_added", "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent"}},
             ],
         },
@@ -122,7 +122,7 @@ def test_agents_overwrite_by_service_name() -> None:
         json={
             "runId": "run-2",
             "events": [
-                {"type": "run_started", "runId": "run-2", "runLabel": "Agent"},
+                {"type": "run_started", "runId": "run-2", "runLabel": "Agent", "metadata": {"agent.id": "agent-2", "batch.id": "batch-1"}},
                 {"type": "node_added", "node": {"id": "span-2", "parentId": None, "label": "second", "subtitle": "Agent", "type": "agent"}},
             ],
         },
@@ -136,20 +136,30 @@ def test_agents_overwrite_by_service_name() -> None:
         {
             "serviceName": "Agent",
             "runId": "run-2",
+            "metadata": {"agent.id": "agent-2", "batch.id": "batch-1"},
             "events": [
-                {"type": "run_started", "runId": "run-2", "runLabel": "Agent"},
+                {"type": "run_started", "runId": "run-2", "runLabel": "Agent", "metadata": {"agent.id": "agent-2", "batch.id": "batch-1"}},
                 {"type": "node_added", "node": {"id": "span-2", "parentId": None, "label": "second", "subtitle": "Agent", "type": "agent"}},
+            ],
+        },
+        {
+            "serviceName": "Agent",
+            "runId": "run-1",
+            "metadata": {"agent.id": "agent-1", "batch.id": "batch-1"},
+            "events": [
+                {"type": "run_started", "runId": "run-1", "runLabel": "Agent", "metadata": {"agent.id": "agent-1", "batch.id": "batch-1"}},
+                {"type": "node_added", "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent"}},
             ],
         }
     ]
 
 
 def test_stream_replays_existing_agent_events() -> None:
-    main.store.start_run("Agent", "run-1")
+    main.store.start_run("Agent", "run-1", metadata={"agent.id": "agent-1"})
     main.store.append_events(
-        "Agent",
+        "run-1",
         [
-            {"type": "run_started", "runId": "run-1", "runLabel": "Agent"},
+            {"type": "run_started", "runId": "run-1", "runLabel": "Agent", "metadata": {"agent.id": "agent-1"}},
             {"type": "node_added", "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent"}},
         ],
     )
@@ -160,13 +170,42 @@ def test_stream_replays_existing_agent_events() -> None:
     asyncio.run(stream.aclose())
 
     assert json.loads(first_payload.removeprefix("data: ").strip()) == {
+        "runId": "run-1",
         "serviceName": "Agent",
-        "event": {"type": "run_started", "runId": "run-1", "runLabel": "Agent"},
+        "event": {"type": "run_started", "runId": "run-1", "runLabel": "Agent", "metadata": {"agent.id": "agent-1"}},
     }
     assert json.loads(second_payload.removeprefix("data: ").strip()) == {
+        "runId": "run-1",
         "serviceName": "Agent",
         "event": {
             "type": "node_added",
             "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent"},
         },
     }
+
+
+def test_delete_agent_removes_run_from_store() -> None:
+    client = TestClient(main.app)
+    client.post("/auth/verify", json={"code": "123456"})
+    api_key = client.post("/channel").json()["apiKey"]
+    client.post(
+        "/v1/events",
+        headers={"X-Channel-API-Key": api_key},
+        json={"runId": "run-1", "events": [{"type": "run_started", "runId": "run-1", "runLabel": "Agent"}]},
+    )
+
+    delete_response = client.delete("/agents/run-1")
+    agents_response = client.get("/agents")
+
+    assert delete_response.status_code == 204
+    assert agents_response.json() == []
+
+
+def test_delete_agent_returns_not_found_for_unknown_run() -> None:
+    client = TestClient(main.app)
+    client.post("/auth/verify", json={"code": "123456"})
+
+    response = client.delete("/agents/run-unknown")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Unknown runId"}

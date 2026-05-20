@@ -138,3 +138,41 @@ def test_observe_async_wraps_coroutine(monkeypatch) -> None:
     assert greet.__name__ == "greet"
     result = asyncio.run(greet("world"))
     assert result == "hi world"
+
+
+def test_start_run_creates_new_root_and_propagates_metadata(monkeypatch) -> None:
+    entered_spans: list[tuple[str, object, object]] = []
+
+    class FakeSpan:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, _exc_type, _exc, _tb) -> bool:
+            return False
+
+        def record_exception(self, _exception: Exception) -> None:
+            return None
+
+        def set_status(self, _status: object) -> None:
+            return None
+
+        def set_attribute(self, _name: str, _value: object) -> None:
+            return None
+
+    class FakeTracer:
+        def start_as_current_span(self, name: str, context=None, attributes=None) -> FakeSpan:
+            entered_spans.append((name, context, attributes))
+            return FakeSpan()
+
+    monkeypatch.setattr(_core, "_tracer", lambda: FakeTracer())
+    monkeypatch.setattr(_core, "_ensure_provider", lambda: object())
+    _core.init(cleair_api_key="key")
+
+    with _core.start_run("agent.run", metadata={"agent.id": "agent-1", "batch.id": "batch-1"}):
+        with _core.span("child"):
+            pass
+
+    assert entered_spans[0][0] == "agent.run"
+    assert entered_spans[0][1] is not None
+    assert entered_spans[0][2] == {"cleair.type": "trace", "agent.id": "agent-1", "batch.id": "batch-1"}
+    assert entered_spans[1] == ("child", None, {"agent.id": "agent-1", "batch.id": "batch-1"})

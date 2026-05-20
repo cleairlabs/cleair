@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 from typing import Optional
 
 from opentelemetry.context import Context
@@ -35,6 +36,12 @@ def _str_attr(attributes: object, key: str, default: str = "") -> str:
 
 def _events_url(base_url: str) -> str:
     return f"{base_url.rstrip('/')}/v1/events"
+
+
+def _run_metadata(attributes: object) -> dict[str, str | int | float | bool]:
+    if not isinstance(attributes, Mapping):
+        return {}
+    return {key: value for key, value in attributes.items() if key not in {"cleair.type", "cleair.why", "duration_ms"}}
 
 
 class CleairHttpSpanProcessor(SpanProcessor):
@@ -62,7 +69,7 @@ class CleairHttpSpanProcessor(SpanProcessor):
 
         events: list[dict] = []
         if is_root:
-            events.append({"type": "run_started", "runId": run_id, "runLabel": self._service_name})
+            events.append({"type": "run_started", "runId": run_id, "runLabel": self._service_name, "metadata": _run_metadata(attrs)})
         events.append({
             "type": "node_added",
             "node": {

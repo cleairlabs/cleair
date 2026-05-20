@@ -10,19 +10,31 @@ type ConnectionStatus = "connecting" | "connected" | "offline";
 type AgentSnapshot = {
   serviceName: string;
   runId: string;
+  metadata: Record<string, string | number | boolean>;
   events: TraceTreeEvent[];
 };
 
 type StreamedAgentEvent = {
+  runId: string;
   serviceName: string;
   event: TraceTreeEvent;
 };
 
 export type AgentTrace = {
+  runId: string;
   serviceName: string;
+  displayName: string;
+  batchId: string | null;
   traceTree: TraceTreeState;
   selectedNodeId: string | null;
 };
+
+function readAgentMetadata(metadata: Record<string, string | number | boolean> | undefined, serviceName: string) {
+  return {
+    displayName: String(metadata?.["agent.id"] ?? serviceName),
+    batchId: metadata?.["batch.id"] === undefined ? null : String(metadata["batch.id"]),
+  };
+}
 
 function hydrateTraceTree(runId: string, serviceName: string, events: TraceTreeEvent[]): TraceTreeState {
   let traceTree = createEmptyTraceTree(runId, serviceName);
@@ -32,20 +44,23 @@ function hydrateTraceTree(runId: string, serviceName: string, events: TraceTreeE
   return traceTree;
 }
 
-function upsertAgent(previousAgents: AgentTrace[], serviceName: string, update: (agent: AgentTrace) => AgentTrace): AgentTrace[] {
-  const existingAgent = previousAgents.find((agent) => agent.serviceName === serviceName);
+function upsertAgent(previousAgents: AgentTrace[], runId: string, update: (agent: AgentTrace) => AgentTrace): AgentTrace[] {
+  const existingAgent = previousAgents.find((agent) => agent.runId === runId);
   const baseAgent = existingAgent ?? {
-    serviceName,
+    runId,
+    serviceName: EMPTY_RUN_LABEL,
+    displayName: EMPTY_RUN_LABEL,
+    batchId: null,
     traceTree: createEmptyTraceTree(EMPTY_RUN_ID, EMPTY_RUN_LABEL),
     selectedNodeId: null,
   };
-  return [update(baseAgent), ...previousAgents.filter((agent) => agent.serviceName !== serviceName)];
+  return [update(baseAgent), ...previousAgents.filter((agent) => agent.runId !== runId)];
 }
 
 export function useAgents(backendUrl: string, enabled: boolean, refreshAccessState: () => Promise<void>) {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [agents, setAgents] = useState<AgentTrace[]>([]);
-  const [selectedAgentName, setSelectedAgentName] = useState<string | null>(null);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
   const sourceRef = useRef<EventSource | null>(null);
 
@@ -55,7 +70,7 @@ export function useAgents(backendUrl: string, enabled: boolean, refreshAccessSta
       sourceRef.current = null;
       setApiKey(null);
       setAgents([]);
-      setSelectedAgentName(null);
+      setSelectedRunId(null);
       setConnectionStatus("connecting");
       return;
     }
@@ -89,12 +104,14 @@ export function useAgents(backendUrl: string, enabled: boolean, refreshAccessSta
         setApiKey(channel.apiKey);
         setAgents(
           agentSnapshots.map((agentSnapshot) => ({
+            runId: agentSnapshot.runId,
             serviceName: agentSnapshot.serviceName,
+            ...readAgentMetadata(agentSnapshot.metadata, agentSnapshot.serviceName),
             traceTree: hydrateTraceTree(agentSnapshot.runId, agentSnapshot.serviceName, agentSnapshot.events),
             selectedNodeId: null,
           }))
         );
-        setSelectedAgentName((currentSelectedAgentName) => currentSelectedAgentName ?? agentSnapshots[0]?.serviceName ?? null);
+        setSelectedRunId((currentSelectedRunId) => currentSelectedRunId ?? agentSnapshots[0]?.runId ?? null);
       } catch (error) {
         console.error("[cleair] Failed to load agents:", error);
         setConnectionStatus("offline");
@@ -120,13 +137,21 @@ export function useAgents(backendUrl: string, enabled: boolean, refreshAccessSta
     source.onmessage = (messageEvent) => {
       const streamedEvent = JSON.parse(messageEvent.data as string) as StreamedAgentEvent;
       setAgents((previousAgents) =>
-        upsertAgent(previousAgents, streamedEvent.serviceName, (agent) => ({
-          ...agent,
-          traceTree: applyTraceTreeEvent(agent.traceTree, streamedEvent.event),
-          selectedNodeId: streamedEvent.event.type === "run_started" ? null : agent.selectedNodeId,
-        }))
+        upsertAgent(previousAgents, streamedEvent.runId, (agent) => {
+          const metadata = streamedEvent.event.type === "run_started"
+            ? readAgentMetadata(streamedEvent.event.metadata, streamedEvent.serviceName)
+            : agent;
+          return {
+            ...agent,
+            serviceName: streamedEvent.serviceName,
+            displayName: metadata.displayName,
+            batchId: metadata.batchId,
+            traceTree: applyTraceTreeEvent(agent.traceTree, streamedEvent.event),
+            selectedNodeId: streamedEvent.event.type === "run_started" ? null : agent.selectedNodeId,
+          };
+        })
       );
-      setSelectedAgentName((currentSelectedAgentName) => currentSelectedAgentName ?? streamedEvent.serviceName);
+      setSelectedRunId((currentSelectedRunId) => currentSelectedRunId ?? streamedEvent.runId);
     };
     source.onerror = () => {
       void refreshAccessState();
@@ -142,13 +167,31 @@ export function useAgents(backendUrl: string, enabled: boolean, refreshAccessSta
   }, [apiKey, backendUrl, enabled, refreshAccessState]);
 
   const setSelectedNodeId = (nodeId: string | null) => {
-    if (selectedAgentName === null) {
+    if (selectedRunId === null) {
       return;
     }
     setAgents((previousAgents) =>
-      previousAgents.map((agent) => agent.serviceName === selectedAgentName ? { ...agent, selectedNodeId: nodeId } : agent)
+      previousAgents.map((agent) => agent.runId === selectedRunId ? { ...agent, selectedNodeId: nodeId } : agent)
     );
   };
 
-  return { apiKey, agents, selectedAgentName, setSelectedAgentName, connectionStatus, setSelectedNodeId };
+  const deleteRun = async (runId: string) => {
+    const response = await fetch(`${backendUrl}/agents/${runId}`, { method: "DELETE", credentials: "include" });
+    if (response.status === 401) {
+      await refreshAccessState()
+      return;
+    }
+    if (response.status === 404) {
+      setAgents((previousAgents) => previousAgents.filter((agent) => agent.runId !== runId));
+      setSelectedRunId((currentSelectedRunId) => currentSelectedRunId === runId ? null : currentSelectedRunId);
+      return;
+    }
+    if (!response.ok) {
+      throw new Error(`Server returned ${response.status}`);
+    }
+    setAgents((previousAgents) => previousAgents.filter((agent) => agent.runId !== runId));
+    setSelectedRunId((currentSelectedRunId) => currentSelectedRunId === runId ? null : currentSelectedRunId);
+  };
+
+  return { apiKey, agents, selectedRunId, setSelectedRunId, connectionStatus, setSelectedNodeId, deleteRun };
 }

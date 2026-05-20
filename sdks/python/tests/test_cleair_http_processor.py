@@ -20,14 +20,19 @@ def test_on_start_emits_run_started_for_root_span(monkeypatch) -> None:
     span = SimpleNamespace(
         context=SimpleNamespace(is_valid=True, trace_id=0x11111111111111111111111111111111, span_id=0x2222222222222222),
         parent=None,
-        attributes={},
+        attributes={"agent.id": "agent-1", "batch.id": "batch-1"},
         name="root",
     )
     processor.on_start(span)
 
     events = captured["events"]
     assert captured["run_id"] == "11111111111111111111111111111111"
-    assert events[0] == {"type": "run_started", "runId": captured["run_id"], "runLabel": "svc"}
+    assert events[0] == {
+        "type": "run_started",
+        "runId": captured["run_id"],
+        "runLabel": "svc",
+        "metadata": {"agent.id": "agent-1", "batch.id": "batch-1"},
+    }
     assert events[1]["type"] == "node_added"
     assert events[2] == {"type": "node_status_changed", "nodeId": "2222222222222222", "status": "running"}
 

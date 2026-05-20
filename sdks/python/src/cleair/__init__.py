@@ -8,6 +8,7 @@ from cleair._core import (
     instrument,
     observe,
     span,
+    start_run,
     trace_call,
 )
 
@@ -20,6 +21,7 @@ __all__ = [
     "instrument",
     "observe",
     "span",
+    "start_run",
     "trace_call",
     "type",
 ]
