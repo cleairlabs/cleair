@@ -36,6 +36,7 @@ const GRAPH_NODE_BORDER_WIDTH = 1.5;
 const GRAPH_NODE_BORDER_WIDTH_SELECTED = 3;
 const GRAPH_NODE_FONT_SIZE = 16;
 const GRAPH_EDGE_WIDTH = 1.8;
+const GRAPH_EDGE_WIDTH_SELECTED = 3.2;
 const GRAPH_EDGE_COLOR = "rgba(110, 110, 110, 0.72)";
 const GRAPH_EDGE_ROUNDNESS = 0.16;
 const GRAPH_LAYOUT_RANDOM_SEED = 4;
@@ -161,6 +162,7 @@ export function TraceGraph({ traceTree, selectedNodeId, onSelectNode }: TraceVie
   const containerRef = useRef<HTMLDivElement | null>(null);
   const networkRef = useRef<Network | null>(null);
   const graphNodesRef = useRef<DataSet<any> | null>(null);
+  const graphEdgesRef = useRef<DataSet<any> | null>(null);
   const [themeName, setThemeName] = useState(document.documentElement.dataset.theme ?? "light");
   const graphData = useMemo(() => buildGraphData(traceTree), [traceTree]);
   const selectedGraphNode = useMemo(() => selectedGraphNodeId(graphData.nodes, selectedNodeId), [graphData.nodes, selectedNodeId]);
@@ -216,21 +218,28 @@ export function TraceGraph({ traceTree, selectedNodeId, onSelectNode }: TraceVie
       }
     });
     graphNodesRef.current = graphNodes;
+    graphEdgesRef.current = graphEdges;
     networkRef.current = network;
     return () => {
       network.destroy();
       graphNodesRef.current = null;
+      graphEdgesRef.current = null;
       networkRef.current = null;
     };
   }, [graphData, onSelectNode, themeName]);
 
   useEffect(() => {
     const graphNodes = graphNodesRef.current;
-    if (!graphNodes) return;
+    const graphEdges = graphEdgesRef.current;
+    if (!graphNodes || !graphEdges) return;
     graphNodes.update(graphData.nodes.map((graphNode) => ({
       id: graphNode.id,
       borderWidth: graphNode.id === selectedGraphNode ? GRAPH_NODE_BORDER_WIDTH_SELECTED : GRAPH_NODE_BORDER_WIDTH,
       color: graphNode.id === selectedGraphNode ? graphSelectedNodeColor(graphNode.type) : graphNodeColor(graphNode.type),
+    })));
+    graphEdges.update(graphData.edges.map((graphEdge) => ({
+      id: graphEdge.id,
+      width: selectedGraphNode && (graphEdge.from === selectedGraphNode || graphEdge.to === selectedGraphNode) ? GRAPH_EDGE_WIDTH_SELECTED : GRAPH_EDGE_WIDTH,
     })));
   }, [graphData.nodes, selectedGraphNode, themeName]);
 
