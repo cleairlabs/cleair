@@ -1,6 +1,4 @@
-# cleAIr
-
-Explainable agent observability.
+# cleAIr - Agent Governance
 
 
 ## SDKs
