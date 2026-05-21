@@ -47,13 +47,45 @@ def test_flush_uses_provider(monkeypatch) -> None:
 
 
 def test_provider_builds_processor_from_base_url(monkeypatch) -> None:
-    fake_processor = MagicMock()
-    monkeypatch.setattr("cleair._core.CleairHttpSpanProcessor", fake_processor)
+    fake_exporter = MagicMock(name="exporter")
+    fake_batch_processor = MagicMock(name="batch_processor")
+    fake_live_processor = MagicMock(name="live_processor")
+    monkeypatch.setattr("cleair._core.OTLPSpanExporter", fake_exporter)
+    monkeypatch.setattr("cleair._core.BatchSpanProcessor", fake_batch_processor)
+    monkeypatch.setattr("cleair._core.CleairLiveSpanProcessor", fake_live_processor)
 
     _core.init(CleairConfig(service_name="svc", base_url=DEFAULT_BASE_URL, api_key="test-key"))
     _core._ensure_provider()
 
-    fake_processor.assert_called_once_with(base_url=DEFAULT_BASE_URL, api_key="test-key", service_name="svc")
+    fake_live_processor.assert_called_once_with(
+        base_url=DEFAULT_BASE_URL,
+        api_key="test-key",
+        service_name="svc",
+    )
+    fake_exporter.assert_called_once_with(
+        endpoint=f"{DEFAULT_BASE_URL}/v1/traces",
+        headers={"X-Channel-API-Key": "test-key"},
+    )
+    fake_batch_processor.assert_called_once_with(fake_exporter.return_value, schedule_delay_millis=_core.OTLP_SCHEDULE_DELAY_MILLIS)
+
+
+def test_provider_skips_live_processor_when_disabled(monkeypatch) -> None:
+    fake_exporter = MagicMock(name="exporter")
+    fake_batch_processor = MagicMock(name="batch_processor")
+    fake_live_processor = MagicMock(name="live_processor")
+    monkeypatch.setattr("cleair._core.OTLPSpanExporter", fake_exporter)
+    monkeypatch.setattr("cleair._core.BatchSpanProcessor", fake_batch_processor)
+    monkeypatch.setattr("cleair._core.CleairLiveSpanProcessor", fake_live_processor)
+
+    _core.init(CleairConfig(service_name="svc", base_url=DEFAULT_BASE_URL, api_key="test-key", use_live=False))
+    _core._ensure_provider()
+
+    fake_live_processor.assert_not_called()
+    fake_exporter.assert_called_once_with(
+        endpoint=f"{DEFAULT_BASE_URL}/v1/traces",
+        headers={"X-Channel-API-Key": "test-key"},
+    )
+    fake_batch_processor.assert_called_once_with(fake_exporter.return_value, schedule_delay_millis=_core.OTLP_SCHEDULE_DELAY_MILLIS)
 
 
 def test_span_records_exception_and_reraises(monkeypatch) -> None:
@@ -174,5 +206,41 @@ def test_start_run_creates_new_root_and_propagates_metadata(monkeypatch) -> None
 
     assert entered_spans[0][0] == "agent.run"
     assert entered_spans[0][1] is not None
+    assert entered_spans[0][2] == {"cleair.type": "trace", "agent.id": "agent-1", "batch.id": "batch-1"}
+    assert entered_spans[1] == ("child", None, {"agent.id": "agent-1", "batch.id": "batch-1"})
+
+
+def test_start_run_accepts_agent_and_batch_params(monkeypatch) -> None:
+    entered_spans: list[tuple[str, object, object]] = []
+
+    class FakeSpan:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, _exc_type, _exc, _tb) -> bool:
+            return False
+
+        def record_exception(self, _exception: Exception) -> None:
+            return None
+
+        def set_status(self, _status: object) -> None:
+            return None
+
+        def set_attribute(self, _name: str, _value: object) -> None:
+            return None
+
+    class FakeTracer:
+        def start_as_current_span(self, name: str, context=None, attributes=None) -> FakeSpan:
+            entered_spans.append((name, context, attributes))
+            return FakeSpan()
+
+    monkeypatch.setattr(_core, "_tracer", lambda: FakeTracer())
+    monkeypatch.setattr(_core, "_ensure_provider", lambda: object())
+    _core.init(cleair_api_key="key")
+
+    with _core.start_run("agent.run", agent_id="agent-1", batch_id="batch-1"):
+        with _core.span("child"):
+            pass
+
     assert entered_spans[0][2] == {"cleair.type": "trace", "agent.id": "agent-1", "batch.id": "batch-1"}
     assert entered_spans[1] == ("child", None, {"agent.id": "agent-1", "batch.id": "batch-1"})

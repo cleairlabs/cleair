@@ -13,8 +13,8 @@
 - `POST /auth/verify`: verify the demo access code
 - `POST /channel`: create or return the single API key used by the workspace
 - `GET /agents`: list the latest trace for each `service_name`
-- `POST /v1/traces`: OTLP/JSON trace ingestion
-- `POST /v1/events`: cleair-native event ingestion (streaming)
+- `POST /v1/traces`: OTLP trace ingestion
+- `POST /v1/live`: transient live span-start ingestion
 - `GET /channel/stream`: SSE stream of live agent updates
 
 ## Run
@@ -34,7 +34,8 @@ Runs at `http://localhost:8000`.
 cleair.init(service_name="my-agent", cleair_api_key="<channel-api-key>")
 ```
 
-cleAIr sends streaming events to `https://api.cleair.ai/v1/events` by default.
+cleAIr exports OTLP traces to `https://api.cleair.ai/v1/traces` by default and sends
+best-effort span-start updates to `https://api.cleair.ai/v1/live`.
 When sending traces to the local backend instead, set `CLEAIR_BASE_URL=http://localhost:8000`.
 
 ## Frontend

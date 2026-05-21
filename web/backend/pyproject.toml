@@ -4,6 +4,8 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",
+    "opentelemetry-proto>=1.20.0",
+    "protobuf>=4.25.0",
     "uvicorn[standard]>=0.32.0",
 ]
 

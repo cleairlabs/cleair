@@ -36,6 +36,8 @@ def test_module_observe_merges_attributes_and_metadata(monkeypatch) -> None:
         name="story",
         metadata={"source": "langfuse", "override": "metadata"},
         as_type={"override": "attributes"},
+        agent_id="agent-1",
+        batch_id="batch-1",
         session_id="session-1",
     )
     wrapped = decorator(target)
@@ -46,7 +48,13 @@ def test_module_observe_merges_attributes_and_metadata(monkeypatch) -> None:
             (target,),
             {
                 "span_name": "story",
-                "attributes": {"source": "langfuse", "override": "attributes", "session.id": "session-1"},
+                "attributes": {
+                    "source": "langfuse",
+                    "override": "attributes",
+                    "agent.id": "agent-1",
+                    "batch.id": "batch-1",
+                    "session.id": "session-1",
+                },
                 "capture_output": False,
             },
         )

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { getConnectorClasses, isScrolledToBottom } from "./TraceTree";
+import { buildTreeEntries, getConnectorClasses, isScrolledToBottom } from "./TraceTree";
 
 describe("getConnectorClasses", () => {
   test("uses the parent-continuation flag for the first pass-through column", () => {
@@ -34,5 +34,43 @@ describe("isScrolledToBottom", () => {
 
   test("returns false when the user has scrolled away from the bottom", () => {
     expect(isScrolledToBottom({ scrollHeight: 400, clientHeight: 100, scrollTop: 280 })).toBe(false);
+  });
+});
+
+describe("buildTreeEntries", () => {
+  test("treats nodes with missing parents as temporary roots", () => {
+    const entries = buildTreeEntries({
+      runId: "run-1",
+      runLabel: "Agent",
+      isCompleted: false,
+      nodeIdsInOrder: ["research", "call-llm"],
+      nodesById: {
+        research: {
+          id: "research",
+          parentId: "main",
+          label: "research",
+          subtitle: "Agent",
+          type: "agent",
+          status: "done",
+          durationMs: 10,
+          output: null,
+        },
+        "call-llm": {
+          id: "call-llm",
+          parentId: "research",
+          label: "call_llm",
+          subtitle: "Agent",
+          type: "tool",
+          status: "done",
+          durationMs: 5,
+          output: null,
+        },
+      },
+    });
+
+    expect(entries.map((entry) => [entry.node.id, entry.depth])).toEqual([
+      ["research", 0],
+      ["call-llm", 1],
+    ]);
   });
 });

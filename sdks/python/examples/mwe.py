@@ -51,5 +51,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    cleair.init(service_name="Agent", base_url="http://localhost:8000", cleair_api_key="<channel-api-key>")
+    cleair.init(base_url="http://localhost:8000", cleair_api_key="<channel-api-key>")
     main()

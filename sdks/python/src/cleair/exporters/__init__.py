@@ -1,5 +1,5 @@
-from cleair.exporters.cleair_http import CleairHttpSpanProcessor
+from cleair.exporters.live_http import CleairLiveSpanProcessor
 
 __all__ = [
-    "CleairHttpSpanProcessor",
+    "CleairLiveSpanProcessor",
 ]
