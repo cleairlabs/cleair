@@ -71,6 +71,10 @@ function buildChildrenMap(traceTree: TraceTreeState): Record<string, string[]> {
   return childrenByParentId;
 }
 
+function isTemporaryRootNode(traceTree: TraceTreeState, node: FlowNode): boolean {
+  return node.parentId === null || traceTree.nodesById[node.parentId] === undefined;
+}
+
 function graphNodeId(type: GraphNodeType, label: string) {
   return `${type}:${label}`;
 }
@@ -86,6 +90,10 @@ function isDarkTheme() {
 function buildExecutionSequence(traceTree: TraceTreeState) {
   const childrenByParentId = buildChildrenMap(traceTree);
   const executionSequence: ExecutionStep[] = [{ id: "__start__", label: "__start__", type: "start", flowNodeId: null }];
+  const rootNodeIds = traceTree.nodeIdsInOrder.filter((nodeId) => {
+    const node = traceTree.nodesById[nodeId];
+    return node !== undefined && isTemporaryRootNode(traceTree, node);
+  });
 
   function visit(nodeId: string) {
     const node = traceTree.nodesById[nodeId];
@@ -98,7 +106,7 @@ function buildExecutionSequence(traceTree: TraceTreeState) {
     }
   }
 
-  for (const rootNodeId of childrenByParentId[""] ?? []) {
+  for (const rootNodeId of rootNodeIds) {
     visit(rootNodeId);
   }
   executionSequence.push({ id: "__end__", label: "__end__", type: "end", flowNodeId: null });

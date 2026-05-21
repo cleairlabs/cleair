@@ -45,6 +45,9 @@ class TraceStore:
     def start_run(self, service_name: str, run_id: str, metadata: dict[str, str | int | float | bool] | None = None) -> bool:
         existing_run = self._agents.get(run_id)
         if existing_run is not None:
+            existing_run.service_name = service_name
+            if metadata:
+                existing_run.metadata.update(metadata)
             return False
         self._agents[run_id] = AgentRunState(
             service_name=service_name,

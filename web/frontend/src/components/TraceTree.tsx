@@ -29,16 +29,23 @@ function buildChildrenMap(graph: TraceTreeState): Record<string, string[]> {
   return childrenByParentId;
 }
 
+function isTemporaryRootNode(graph: TraceTreeState, node: FlowNode): boolean {
+  return node.parentId === null || graph.nodesById[node.parentId] === undefined;
+}
+
 /** Depth-first traversal producing a flat list of nodes with tree metadata. */
-function buildTreeEntries(graph: TraceTreeState): TreeEntry[] {
+export function buildTreeEntries(graph: TraceTreeState): TreeEntry[] {
   const childrenByParentId = buildChildrenMap(graph);
-  const rootNodeIds = childrenByParentId[""] ?? [];
+  const rootNodeIds = graph.nodeIdsInOrder.filter((nodeId) => {
+    const node = graph.nodesById[nodeId];
+    return node !== undefined && isTemporaryRootNode(graph, node);
+  });
   const entries: TreeEntry[] = [];
 
   function visit(nodeId: string, depth: number, ancestorContinues: boolean[]) {
     const node = graph.nodesById[nodeId];
     if (!node) return;
-    const siblings = node.parentId ? (childrenByParentId[node.parentId] ?? []) : rootNodeIds;
+    const siblings = isTemporaryRootNode(graph, node) ? rootNodeIds : (childrenByParentId[node.parentId ?? ""] ?? []);
     const isLastChild = siblings[siblings.length - 1] === nodeId;
     entries.push({ node, depth, isLastChild, ancestorContinues });
     for (const childId of childrenByParentId[nodeId] ?? []) {

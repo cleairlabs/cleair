@@ -5,7 +5,10 @@ import asyncio
 import json
 import logging
 import os
+from collections.abc import Mapping
 
+from google.protobuf.json_format import MessageToDict
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +24,7 @@ from cleair_backend.auth import (
     set_authenticated_session,
     verify_access_code,
 )
+from cleair_backend.live import live_payload_to_events
 from cleair_backend.otlp import otlp_payload_to_run_events
 from cleair_backend.store import TraceStore
 
@@ -52,10 +56,14 @@ def _resolve_channel(request: Request) -> None:
         raise HTTPException(status_code=404, detail="Unknown API key")
 
 
-def _run_metadata(events: list[dict]) -> dict[str, str | int | float | bool]:
-    run_started_event = next((event for event in events if event.get("type") == "run_started"), None)
-    metadata = {} if run_started_event is None else run_started_event.get("metadata", {})
-    return metadata if isinstance(metadata, dict) else {}
+def _otlp_payload(body: bytes, content_type: str) -> dict:
+    if "application/json" in content_type:
+        return json.loads(body.decode() or "{}")
+
+    request_message = ExportTraceServiceRequest()
+    request_message.ParseFromString(body)
+    payload = MessageToDict(request_message, preserving_proto_field_name=False)
+    return payload if isinstance(payload, Mapping) else {}
 
 
 async def _generate_sse():
@@ -116,34 +124,25 @@ async def delete_agent(request: Request, run_id: str) -> None:
 @app.post("/v1/traces", status_code=204)
 async def ingest_otlp_traces(request: Request) -> None:
     _resolve_channel(request)
-    payload = await request.json()
-    for trace_id, service_name, span_events in otlp_payload_to_run_events(payload):
-        is_new_run = store.start_run(service_name, trace_id)
-        events_to_emit = [{"type": "run_started", "runId": trace_id, "runLabel": service_name}] if is_new_run else []
-        events_to_emit.extend(span_events)
-        store.append_events(trace_id, events_to_emit)
-        if any(event.get("type") == "run_completed" for event in span_events):
-            store.mark_completed(trace_id)
-        logger.info("Ingested %d events for trace %s (%s)", len(events_to_emit), trace_id, service_name)
+    payload = _otlp_payload(await request.body(), request.headers.get("content-type", "application/json"))
+    for trace_run in otlp_payload_to_run_events(payload):
+        is_new_run = store.start_run(trace_run.service_name, trace_run.trace_id, metadata=trace_run.metadata)
+        events_to_emit = [{"type": "run_started", "runId": trace_run.trace_id, "runLabel": trace_run.service_name, "metadata": trace_run.metadata}] if is_new_run else []
+        events_to_emit.extend(trace_run.events)
+        store.append_events(trace_run.trace_id, events_to_emit)
+        if trace_run.is_completed:
+            store.mark_completed(trace_run.trace_id)
+        logger.info("Ingested %d events for trace %s (%s)", len(events_to_emit), trace_run.trace_id, trace_run.service_name)
 
 
-@app.post("/v1/events", status_code=204)
-async def ingest_events(request: Request) -> None:
+@app.post("/v1/live", status_code=204)
+async def ingest_live_span_start(request: Request) -> None:
     _resolve_channel(request)
-    body = await request.json()
-    run_id = body["runId"]
-    events: list[dict] = body["events"]
-    run_label = next((event["runLabel"] for event in events if event.get("type") == "run_started"), None)
-    if run_label is not None:
-        store.start_run(run_label, run_id, metadata=_run_metadata(events))
-        service_name = run_label
-    else:
-        service_name = store.get_service_name_for_run(run_id)
-        if service_name is None:
-            raise HTTPException(status_code=400, detail="Unknown runId")
-    store.append_events(run_id, events)
-    if any(event.get("type") == "run_completed" for event in events):
-        store.mark_completed(run_id)
+    run_id, service_name, metadata, events = live_payload_to_events(await request.json())
+    is_new_run = store.start_run(service_name, run_id, metadata=metadata)
+    events_to_emit = [{"type": "run_started", "runId": run_id, "runLabel": service_name, "metadata": metadata}] if is_new_run else []
+    events_to_emit.extend(events)
+    store.append_events(run_id, events_to_emit)
 
 
 @app.get("/channel/stream")

@@ -4,11 +4,44 @@ import asyncio
 import json
 
 from fastapi.testclient import TestClient
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 import pytest
 
 from cleair_backend import main
 from cleair_backend.auth import AuthConfig, SESSION_COOKIE_NAME, _sign_value
 from cleair_backend.store import TraceStore
+
+
+def otlp_payload(trace_id: str, service_name: str, span_id: str, label: str, *, metadata: dict[str, str] | None = None, parent_span_id: str | None = None) -> dict:
+    span_attributes = [] if metadata is None else [
+        {"key": key, "value": {"stringValue": value}}
+        for key, value in metadata.items()
+    ]
+    span_attributes.append({"key": "cleair.type", "value": {"stringValue": "agent"}})
+    span_payload = {
+        "traceId": trace_id,
+        "spanId": span_id,
+        "name": label,
+        "startTimeUnixNano": "1000",
+        "endTimeUnixNano": "2001000",
+        "attributes": span_attributes,
+    }
+    if parent_span_id is not None:
+        span_payload["parentSpanId"] = parent_span_id
+    return {
+        "resourceSpans": [
+            {
+                "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": service_name}}]},
+                "scopeSpans": [
+                    {
+                        "spans": [
+                            span_payload
+                        ]
+                    }
+                ],
+            }
+        ]
+    }
 
 
 @pytest.fixture(autouse=True)
@@ -92,12 +125,86 @@ def test_trace_ingest_still_accepts_channel_api_key_without_session() -> None:
     api_key = main.store.ensure_channel()
 
     response = client.post(
-        "/v1/events",
+        "/v1/traces",
         headers={"X-Channel-API-Key": api_key},
-        json={"runId": "run-1", "events": [{"type": "run_started", "runId": "run-1", "runLabel": "Agent"}]},
+        json=otlp_payload("run-1", "Agent", "span-1", "first"),
     )
 
     assert response.status_code == 204
+
+
+def test_live_ingest_emits_running_node_before_otlp_completion() -> None:
+    client = TestClient(main.app)
+    client.post("/auth/verify", json={"code": "123456"})
+    api_key = client.post("/channel").json()["apiKey"]
+
+    live_response = client.post(
+        "/v1/live",
+        headers={"X-Channel-API-Key": api_key},
+        json={
+            "runId": "run-1",
+            "serviceName": "Agent",
+            "metadata": {"agent.id": "agent-1"},
+            "span": {"id": "span-1", "parentId": None, "label": "first", "type": "agent"},
+        },
+    )
+    otlp_response = client.post(
+        "/v1/traces",
+        headers={"X-Channel-API-Key": api_key},
+        json=otlp_payload("run-1", "Agent", "span-1", "first", metadata={"agent.id": "agent-1"}),
+    )
+    agents_response = client.get("/agents")
+
+    assert live_response.status_code == 204
+    assert otlp_response.status_code == 204
+    assert agents_response.json() == [
+        {
+            "serviceName": "Agent",
+            "runId": "run-1",
+            "metadata": {"agent.id": "agent-1"},
+            "events": [
+                {"type": "run_started", "runId": "run-1", "runLabel": "Agent", "metadata": {"agent.id": "agent-1"}},
+                {"type": "node_added", "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent"}},
+                {"type": "node_status_changed", "nodeId": "span-1", "status": "running"},
+                {"type": "node_added", "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent"}},
+                {"type": "node_status_changed", "nodeId": "span-1", "status": "running"},
+                {"type": "node_status_changed", "nodeId": "span-1", "status": "done"},
+                {"type": "node_finished", "nodeId": "span-1", "durationMs": 2},
+                {"type": "run_completed"},
+            ],
+        }
+    ]
+
+
+def test_trace_ingest_accepts_otlp_protobuf() -> None:
+    client = TestClient(main.app)
+    client.post("/auth/verify", json={"code": "123456"})
+    api_key = main.store.ensure_channel()
+    request_message = ExportTraceServiceRequest()
+    resource_span = request_message.resource_spans.add()
+    resource_attribute = resource_span.resource.attributes.add()
+    resource_attribute.key = "service.name"
+    resource_attribute.value.string_value = "Agent"
+    scope_span = resource_span.scope_spans.add()
+    span = scope_span.spans.add()
+    span.trace_id = bytes.fromhex("11111111111111111111111111111111")
+    span.span_id = bytes.fromhex("2222222222222222")
+    span.name = "first"
+    span.start_time_unix_nano = 1000
+    span.end_time_unix_nano = 2_001_000
+    span_attribute = span.attributes.add()
+    span_attribute.key = "cleair.type"
+    span_attribute.value.string_value = "agent"
+
+    response = client.post(
+        "/v1/traces",
+        headers={"Content-Type": "application/x-protobuf", "X-Channel-API-Key": api_key},
+        content=request_message.SerializeToString(),
+    )
+    agents_response = client.get("/agents")
+
+    assert response.status_code == 204
+    assert agents_response.json()[0]["runId"] == "11111111111111111111111111111111"
 
 
 def test_agents_keep_multiple_runs_for_same_service_name() -> None:
@@ -106,26 +213,26 @@ def test_agents_keep_multiple_runs_for_same_service_name() -> None:
     api_key = client.post("/channel").json()["apiKey"]
 
     first_response = client.post(
-        "/v1/events",
+        "/v1/traces",
         headers={"X-Channel-API-Key": api_key},
-        json={
-            "runId": "run-1",
-            "events": [
-                {"type": "run_started", "runId": "run-1", "runLabel": "Agent", "metadata": {"agent.id": "agent-1", "batch.id": "batch-1"}},
-                {"type": "node_added", "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent"}},
-            ],
-        },
+        json=otlp_payload(
+            "run-1",
+            "Agent",
+            "span-1",
+            "first",
+            metadata={"agent.id": "agent-1", "batch.id": "batch-1"},
+        ),
     )
     second_response = client.post(
-        "/v1/events",
+        "/v1/traces",
         headers={"X-Channel-API-Key": api_key},
-        json={
-            "runId": "run-2",
-            "events": [
-                {"type": "run_started", "runId": "run-2", "runLabel": "Agent", "metadata": {"agent.id": "agent-2", "batch.id": "batch-1"}},
-                {"type": "node_added", "node": {"id": "span-2", "parentId": None, "label": "second", "subtitle": "Agent", "type": "agent"}},
-            ],
-        },
+        json=otlp_payload(
+            "run-2",
+            "Agent",
+            "span-2",
+            "second",
+            metadata={"agent.id": "agent-2", "batch.id": "batch-1"},
+        ),
     )
     agents_response = client.get("/agents")
 
@@ -140,6 +247,10 @@ def test_agents_keep_multiple_runs_for_same_service_name() -> None:
             "events": [
                 {"type": "run_started", "runId": "run-2", "runLabel": "Agent", "metadata": {"agent.id": "agent-2", "batch.id": "batch-1"}},
                 {"type": "node_added", "node": {"id": "span-2", "parentId": None, "label": "second", "subtitle": "Agent", "type": "agent"}},
+                {"type": "node_status_changed", "nodeId": "span-2", "status": "running"},
+                {"type": "node_status_changed", "nodeId": "span-2", "status": "done"},
+                {"type": "node_finished", "nodeId": "span-2", "durationMs": 2},
+                {"type": "run_completed"},
             ],
         },
         {
@@ -149,6 +260,10 @@ def test_agents_keep_multiple_runs_for_same_service_name() -> None:
             "events": [
                 {"type": "run_started", "runId": "run-1", "runLabel": "Agent", "metadata": {"agent.id": "agent-1", "batch.id": "batch-1"}},
                 {"type": "node_added", "node": {"id": "span-1", "parentId": None, "label": "first", "subtitle": "Agent", "type": "agent"}},
+                {"type": "node_status_changed", "nodeId": "span-1", "status": "running"},
+                {"type": "node_status_changed", "nodeId": "span-1", "status": "done"},
+                {"type": "node_finished", "nodeId": "span-1", "durationMs": 2},
+                {"type": "run_completed"},
             ],
         }
     ]
@@ -189,9 +304,9 @@ def test_delete_agent_removes_run_from_store() -> None:
     client.post("/auth/verify", json={"code": "123456"})
     api_key = client.post("/channel").json()["apiKey"]
     client.post(
-        "/v1/events",
+        "/v1/traces",
         headers={"X-Channel-API-Key": api_key},
-        json={"runId": "run-1", "events": [{"type": "run_started", "runId": "run-1", "runLabel": "Agent"}]},
+        json=otlp_payload("run-1", "Agent", "span-1", "first"),
     )
 
     delete_response = client.delete("/agents/run-1")

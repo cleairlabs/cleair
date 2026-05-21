@@ -42,8 +42,16 @@ def main() -> None:
         ...
 ```
 
-By default, cleAIr uses `https://api.cleair.ai` and sends streaming events to
-`/v1/events`. The simplest setup is:
+```python
+with cleair.start_run("agent.run", agent_id="agent-7", batch_id="batch-42"):
+    ...
+```
+
+Use `metadata={...}` only for arbitrary extra fields that do not have a first-class parameter.
+
+By default, cleAIr uses `https://api.cleair.ai`, exports OTLP traces to
+`/v1/traces`, and sends best-effort live span starts to `/v1/live`. OTLP remains
+the authoritative trace path. The simplest setup is:
 
 ```python
 cleair.init(service_name="my-agent", cleair_api_key="<key>")

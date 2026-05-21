@@ -27,4 +27,42 @@ describe("buildGraphData", () => {
       ["agent:agent", "tool:tool"],
     ]);
   });
+
+  test("treats nodes with missing parents as temporary roots", () => {
+    const graphData = buildGraphData({
+      runId: "run-1",
+      runLabel: "Agent",
+      isCompleted: false,
+      nodeIdsInOrder: ["research", "call-llm"],
+      nodesById: {
+        research: {
+          id: "research",
+          parentId: "main",
+          label: "research",
+          subtitle: "Agent",
+          type: "agent",
+          status: "done",
+          durationMs: 20,
+          output: null,
+        },
+        "call-llm": {
+          id: "call-llm",
+          parentId: "research",
+          label: "tool",
+          subtitle: "Agent",
+          type: "tool",
+          status: "done",
+          durationMs: 10,
+          output: null,
+        },
+      },
+    });
+
+    expect(graphData.nodes.map((graphNode) => graphNode.label).sort()).toEqual(["__end__", "__start__", "research", "tool"]);
+    expect(graphData.edges.map((graphEdge) => [graphEdge.from, graphEdge.to]).sort()).toEqual([
+      ["__end__", "agent:research"],
+      ["__start__", "agent:research"],
+      ["agent:research", "tool:tool"],
+    ]);
+  });
 });
