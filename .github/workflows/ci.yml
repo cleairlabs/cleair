@@ -16,12 +16,16 @@ jobs:
   python-sdk-tests:
     uses: ./.github/workflows/python-sdk-tests.yml
 
+  docs-build:
+    uses: ./.github/workflows/docs-build.yml
+
   ci:
     runs-on: ubuntu-latest
     needs:
       - backend-tests
       - web-tests
       - python-sdk-tests
+      - docs-build
     steps:
       - name: Confirm CI passed
         run: echo "All CI checks passed."
