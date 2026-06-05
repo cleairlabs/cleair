@@ -1,0 +1,10 @@
+.architecture-image {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.install-command code {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

@@ -23,14 +23,24 @@ services:
       - ./web/backend/auth_codes.json:/app/auth_codes.json:ro
     restart: unless-stopped
 
+  docs:
+    build:
+      context: .
+      dockerfile: docs/Dockerfile
+      args:
+        DOCS_DOMAIN: ${DOCS_DOMAIN}
+    restart: unless-stopped
+
   caddy:
     image: caddy:2.10
     depends_on:
       - frontend
       - backend
+      - docs
     environment:
       DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN}
       API_DOMAIN: ${API_DOMAIN}
+      DOCS_DOMAIN: ${DOCS_DOMAIN}
     ports:
       - "80:80"
       - "443:443"

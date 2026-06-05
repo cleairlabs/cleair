@@ -41,6 +41,7 @@ DEPLOY_PORT=22
 DEPLOY_USER=deploy
 DASHBOARD_DOMAIN=dashboard.example.com
 API_DOMAIN=api.example.com
+DOCS_DOMAIN=docs.example.com
 VITE_BACKEND_URL=https://api.example.com
 ```
 
@@ -54,7 +55,7 @@ DEPLOY_AUTH_CODES_JSON={"codes":["<6-digit-code>"]}
 
 Security notes:
 
-- Keep `DASHBOARD_DOMAIN`, `API_DOMAIN`, and `VITE_BACKEND_URL` as GitHub
+- Keep `DASHBOARD_DOMAIN`, `API_DOMAIN`, `DOCS_DOMAIN`, and `VITE_BACKEND_URL` as GitHub
   Actions variables. They are configuration, not secrets.
 - Keep `DEPLOY_SSH_KEY`, `CLEAIR_AUTH_SECRET`, and `DEPLOY_AUTH_CODES_JSON`
   as GitHub Actions secrets.
@@ -83,7 +84,15 @@ generated fresh on every deployment.
 The production compose file uses:
 
 - `VITE_BACKEND_URL` at frontend image build time
-- `DASHBOARD_DOMAIN`, `API_DOMAIN`, and `CLEAIR_AUTH_SECRET` at runtime
+- `DOCS_DOMAIN` at docs image build time and Caddy runtime
+- `DASHBOARD_DOMAIN`, `API_DOMAIN`, `DOCS_DOMAIN`, and `CLEAIR_AUTH_SECRET` at runtime
+
+The production stack contains four containers:
+
+- `frontend`: serves the React dashboard
+- `backend`: runs the FastAPI API
+- `docs`: builds the MkDocs site and serves the generated files with Nginx
+- `caddy`: handles HTTPS and routes each domain to the correct container
 
 Start the stack with:
 
@@ -98,13 +107,17 @@ For manual server-side deploys, create `.env.deploy` and
 
 - `https://$DASHBOARD_DOMAIN` -> frontend container
 - `https://$API_DOMAIN` -> backend container
+- `https://$DOCS_DOMAIN` -> docs container
 
 ## DNS
 
-Point both hostnames at the server running Docker and Caddy:
+Point all hostnames at the server running Docker and Caddy:
 
 - `dashboard.cleair.ai` -> server IP
 - `api.cleair.ai` -> server IP
+- `docs.cleair.ai` -> server IP
+
+In DigitalOcean DNS, add an `A` record with hostname `docs` and the same server IP used by `dashboard` and `api`.
 
 ## Notes
 
