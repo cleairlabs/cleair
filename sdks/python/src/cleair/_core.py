@@ -114,7 +114,7 @@ def _ensure_provider() -> TracerProvider | None:
             provider.add_span_processor(
                 CleairLiveSpanProcessor(base_url=config.base_url, api_key=config.api_key, service_name=config.service_name)
             )
-        span_exporter = OTLPSpanExporter(endpoint=_traces_endpoint(config.base_url), headers={"X-Channel-API-Key": config.api_key})
+        span_exporter = OTLPSpanExporter(endpoint=_traces_endpoint(config.base_url), headers={"Authorization": f"Bearer {config.api_key}"})
         provider.add_span_processor(BatchSpanProcessor(span_exporter, schedule_delay_millis=OTLP_SCHEDULE_DELAY_MILLIS))
         otel_trace.set_tracer_provider(provider)
         _provider = provider

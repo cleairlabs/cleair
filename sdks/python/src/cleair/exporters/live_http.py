@@ -69,7 +69,7 @@ class CleairLiveSpanProcessor(SpanProcessor):
         request = urllib.request.Request(
             self._live_url,
             data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json", "X-Channel-API-Key": self._api_key},
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {self._api_key}"},
             method="POST",
         )
         try:

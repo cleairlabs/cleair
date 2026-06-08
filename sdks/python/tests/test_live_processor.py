@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from types import SimpleNamespace
 
 from cleair.exporters.live_http import CleairLiveSpanProcessor
@@ -33,3 +34,18 @@ def test_live_processor_emits_root_span_start(monkeypatch) -> None:
             "type": "agent",
         },
     }
+
+
+def test_live_processor_sends_bearer_token(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_urlopen(request, timeout: int):
+        captured["request"] = request
+        return nullcontext()
+
+    processor = CleairLiveSpanProcessor(base_url="http://localhost:8000", api_key="key", service_name="svc")
+    monkeypatch.setattr("cleair.exporters.live_http.urllib.request.urlopen", fake_urlopen)
+
+    processor._post({})
+
+    assert captured["request"].get_header("Authorization") == "Bearer key"

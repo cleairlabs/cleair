@@ -80,15 +80,15 @@ export function useAgents(backendUrl: string, enabled: boolean, refreshAccessSta
     async function load() {
       try {
         setConnectionStatus("connecting");
-        const channelResponse = await fetch(`${backendUrl}/channel`, { method: "POST", credentials: "include" });
-        if (channelResponse.status === 401) {
+        const apiKeyResponse = await fetch(`${backendUrl}/api-key`, { method: "POST", credentials: "include" });
+        if (apiKeyResponse.status === 401) {
           await refreshAccessState();
           return;
         }
-        if (!channelResponse.ok) {
-          throw new Error(`Server returned ${channelResponse.status}`);
+        if (!apiKeyResponse.ok) {
+          throw new Error(`Server returned ${apiKeyResponse.status}`);
         }
-        const channel = (await channelResponse.json()) as { apiKey: string };
+        const apiKeyPayload = (await apiKeyResponse.json()) as { apiKey: string };
         const agentsResponse = await fetch(`${backendUrl}/agents`, { credentials: "include" });
         if (agentsResponse.status === 401) {
           await refreshAccessState();
@@ -101,7 +101,7 @@ export function useAgents(backendUrl: string, enabled: boolean, refreshAccessSta
         if (cancelled) {
           return;
         }
-        setApiKey(channel.apiKey);
+        setApiKey(apiKeyPayload.apiKey);
         setAgents(
           agentSnapshots.map((agentSnapshot) => ({
             runId: agentSnapshot.runId,
@@ -130,7 +130,7 @@ export function useAgents(backendUrl: string, enabled: boolean, refreshAccessSta
       return;
     }
     sourceRef.current?.close();
-    const source = new EventSource(`${backendUrl}/channel/stream`, { withCredentials: true });
+    const source = new EventSource(`${backendUrl}/events`, { withCredentials: true });
     sourceRef.current = source;
 
     source.onopen = () => setConnectionStatus("connected");
