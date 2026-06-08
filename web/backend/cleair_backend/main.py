@@ -48,12 +48,13 @@ app.add_middleware(
 )
 
 
-def _resolve_channel(request: Request) -> None:
-    api_key = request.headers.get("X-Channel-API-Key")
-    if not api_key:
-        raise HTTPException(status_code=401, detail="Missing X-Channel-API-Key header")
+def _authenticate_ingestion(request: Request) -> None:
+    authorization_parts = request.headers.get("Authorization", "").split()
+    if len(authorization_parts) != 2 or authorization_parts[0].lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Invalid bearer token", headers={"WWW-Authenticate": "Bearer"})
+    api_key = authorization_parts[1]
     if not store.has_api_key(api_key):
-        raise HTTPException(status_code=404, detail="Unknown API key")
+        raise HTTPException(status_code=401, detail="Invalid bearer token", headers={"WWW-Authenticate": "Bearer"})
 
 
 def _otlp_payload(body: bytes, content_type: str) -> dict:
@@ -102,10 +103,10 @@ async def auth_logout(response: Response) -> Response:
     return response
 
 
-@app.post("/channel", status_code=201)
-async def create_channel(request: Request) -> dict:
+@app.post("/api-key", status_code=201)
+async def create_api_key(request: Request) -> dict:
     require_authenticated_request(request, auth_config)
-    return {"apiKey": store.ensure_channel()}
+    return {"apiKey": store.ensure_api_key()}
 
 
 @app.get("/agents")
@@ -123,7 +124,7 @@ async def delete_agent(request: Request, run_id: str) -> None:
 
 @app.post("/v1/traces", status_code=204)
 async def ingest_otlp_traces(request: Request) -> None:
-    _resolve_channel(request)
+    _authenticate_ingestion(request)
     payload = _otlp_payload(await request.body(), request.headers.get("content-type", "application/json"))
     for trace_run in otlp_payload_to_run_events(payload):
         is_new_run = store.start_run(trace_run.service_name, trace_run.trace_id, metadata=trace_run.metadata)
@@ -137,7 +138,7 @@ async def ingest_otlp_traces(request: Request) -> None:
 
 @app.post("/v1/live", status_code=204)
 async def ingest_live_span_start(request: Request) -> None:
-    _resolve_channel(request)
+    _authenticate_ingestion(request)
     run_id, service_name, metadata, events = live_payload_to_events(await request.json())
     is_new_run = store.start_run(service_name, run_id, metadata=metadata)
     events_to_emit = [{"type": "run_started", "runId": run_id, "runLabel": service_name, "metadata": metadata}] if is_new_run else []
@@ -145,8 +146,8 @@ async def ingest_live_span_start(request: Request) -> None:
     store.append_events(run_id, events_to_emit)
 
 
-@app.get("/channel/stream")
-async def stream_channel(request: Request) -> StreamingResponse:
+@app.get("/events")
+async def stream_events(request: Request) -> StreamingResponse:
     require_authenticated_request(request, auth_config)
     return StreamingResponse(
         _generate_sse(),

@@ -1,13 +1,19 @@
-site_name: cleair
+site_name: cleair docs
 site_url: !ENV [DOCS_SITE_URL, "https://docs.cleair.ai"]
 repo_name: GitHub
 repo_url: https://github.com/cleairlabs/cleair
 docs_dir: content
 site_dir: ../site
 nav:
-  - Home: index.md
+  - Getting started: index.md
 markdown_extensions:
   - attr_list
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences
 extra_css:
   - stylesheets/extra.css
 theme:

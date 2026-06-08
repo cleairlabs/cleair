@@ -64,7 +64,7 @@ def test_provider_builds_processor_from_base_url(monkeypatch) -> None:
     )
     fake_exporter.assert_called_once_with(
         endpoint=f"{DEFAULT_BASE_URL}/v1/traces",
-        headers={"X-Channel-API-Key": "test-key"},
+        headers={"Authorization": "Bearer test-key"},
     )
     fake_batch_processor.assert_called_once_with(fake_exporter.return_value, schedule_delay_millis=_core.OTLP_SCHEDULE_DELAY_MILLIS)
 
@@ -83,7 +83,7 @@ def test_provider_skips_live_processor_when_disabled(monkeypatch) -> None:
     fake_live_processor.assert_not_called()
     fake_exporter.assert_called_once_with(
         endpoint=f"{DEFAULT_BASE_URL}/v1/traces",
-        headers={"X-Channel-API-Key": "test-key"},
+        headers={"Authorization": "Bearer test-key"},
     )
     fake_batch_processor.assert_called_once_with(fake_exporter.return_value, schedule_delay_millis=_core.OTLP_SCHEDULE_DELAY_MILLIS)
 

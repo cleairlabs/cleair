@@ -23,7 +23,7 @@ class TraceStore:
         self._agent_order: list[str] = []
         self._subscribers: list[asyncio.Queue] = []
 
-    def ensure_channel(self) -> str:
+    def ensure_api_key(self) -> str:
         if self._api_key is None:
             self._api_key = secrets.token_hex(16)
         return self._api_key

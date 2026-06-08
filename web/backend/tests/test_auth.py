@@ -79,23 +79,23 @@ def test_valid_code_sets_session_cookie_and_unlocks_routes() -> None:
     client = TestClient(main.app)
 
     verify_response = client.post("/auth/verify", json={"code": "123456"})
-    channel_response = client.post("/channel")
+    api_key_response = client.post("/api-key")
     agents_response = client.get("/agents")
 
     assert verify_response.status_code == 200
     assert verify_response.json() == {"authenticated": True}
-    assert channel_response.status_code == 201
-    assert len(channel_response.json()["apiKey"]) == 32
+    assert api_key_response.status_code == 201
+    assert len(api_key_response.json()["apiKey"]) == 32
     assert agents_response.status_code == 200
     assert agents_response.json() == []
 
 
-def test_channel_creation_is_idempotent() -> None:
+def test_api_key_creation_is_idempotent() -> None:
     client = TestClient(main.app)
 
     client.post("/auth/verify", json={"code": "123456"})
-    first_response = client.post("/channel")
-    second_response = client.post("/channel")
+    first_response = client.post("/api-key")
+    second_response = client.post("/api-key")
 
     assert first_response.json() == second_response.json()
 
@@ -120,27 +120,39 @@ def test_expired_signed_cookie_is_rejected() -> None:
     assert response.json() == {"detail": "Authentication required"}
 
 
-def test_trace_ingest_still_accepts_channel_api_key_without_session() -> None:
+def test_trace_ingest_accepts_api_key_without_session() -> None:
     client = TestClient(main.app)
-    api_key = main.store.ensure_channel()
+    api_key = main.store.ensure_api_key()
 
     response = client.post(
         "/v1/traces",
-        headers={"X-Channel-API-Key": api_key},
+        headers={"Authorization": f"Bearer {api_key}"},
         json=otlp_payload("run-1", "Agent", "span-1", "first"),
     )
 
     assert response.status_code == 204
 
 
+@pytest.mark.parametrize("authorization", [None, "invalid", "Basic key", "Bearer unknown"])
+def test_trace_ingest_rejects_invalid_bearer_token(authorization: str | None) -> None:
+    client = TestClient(main.app)
+    headers = {} if authorization is None else {"Authorization": authorization}
+
+    response = client.post("/v1/traces", headers=headers, json=otlp_payload("run-1", "Agent", "span-1", "first"))
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid bearer token"}
+    assert response.headers["WWW-Authenticate"] == "Bearer"
+
+
 def test_live_ingest_emits_running_node_before_otlp_completion() -> None:
     client = TestClient(main.app)
     client.post("/auth/verify", json={"code": "123456"})
-    api_key = client.post("/channel").json()["apiKey"]
+    api_key = client.post("/api-key").json()["apiKey"]
 
     live_response = client.post(
         "/v1/live",
-        headers={"X-Channel-API-Key": api_key},
+        headers={"Authorization": f"Bearer {api_key}"},
         json={
             "runId": "run-1",
             "serviceName": "Agent",
@@ -150,7 +162,7 @@ def test_live_ingest_emits_running_node_before_otlp_completion() -> None:
     )
     otlp_response = client.post(
         "/v1/traces",
-        headers={"X-Channel-API-Key": api_key},
+        headers={"Authorization": f"Bearer {api_key}"},
         json=otlp_payload("run-1", "Agent", "span-1", "first", metadata={"agent.id": "agent-1"}),
     )
     agents_response = client.get("/agents")
@@ -179,7 +191,7 @@ def test_live_ingest_emits_running_node_before_otlp_completion() -> None:
 def test_trace_ingest_accepts_otlp_protobuf() -> None:
     client = TestClient(main.app)
     client.post("/auth/verify", json={"code": "123456"})
-    api_key = main.store.ensure_channel()
+    api_key = main.store.ensure_api_key()
     request_message = ExportTraceServiceRequest()
     resource_span = request_message.resource_spans.add()
     resource_attribute = resource_span.resource.attributes.add()
@@ -198,7 +210,7 @@ def test_trace_ingest_accepts_otlp_protobuf() -> None:
 
     response = client.post(
         "/v1/traces",
-        headers={"Content-Type": "application/x-protobuf", "X-Channel-API-Key": api_key},
+        headers={"Content-Type": "application/x-protobuf", "Authorization": f"Bearer {api_key}"},
         content=request_message.SerializeToString(),
     )
     agents_response = client.get("/agents")
@@ -210,11 +222,11 @@ def test_trace_ingest_accepts_otlp_protobuf() -> None:
 def test_agents_keep_multiple_runs_for_same_service_name() -> None:
     client = TestClient(main.app)
     client.post("/auth/verify", json={"code": "123456"})
-    api_key = client.post("/channel").json()["apiKey"]
+    api_key = client.post("/api-key").json()["apiKey"]
 
     first_response = client.post(
         "/v1/traces",
-        headers={"X-Channel-API-Key": api_key},
+        headers={"Authorization": f"Bearer {api_key}"},
         json=otlp_payload(
             "run-1",
             "Agent",
@@ -225,7 +237,7 @@ def test_agents_keep_multiple_runs_for_same_service_name() -> None:
     )
     second_response = client.post(
         "/v1/traces",
-        headers={"X-Channel-API-Key": api_key},
+        headers={"Authorization": f"Bearer {api_key}"},
         json=otlp_payload(
             "run-2",
             "Agent",
@@ -302,10 +314,10 @@ def test_stream_replays_existing_agent_events() -> None:
 def test_delete_agent_removes_run_from_store() -> None:
     client = TestClient(main.app)
     client.post("/auth/verify", json={"code": "123456"})
-    api_key = client.post("/channel").json()["apiKey"]
+    api_key = client.post("/api-key").json()["apiKey"]
     client.post(
         "/v1/traces",
-        headers={"X-Channel-API-Key": api_key},
+        headers={"Authorization": f"Bearer {api_key}"},
         json=otlp_payload("run-1", "Agent", "span-1", "first"),
     )
 
