@@ -7,12 +7,14 @@
 
 ## Backend
 
+The backend trace store is in-memory. Runs are keyed by `runId`, so multiple runs can share the same `serviceName`; data is reset when the backend process restarts.
+
 ## Endpoints
 
 - `GET /auth/session`: cookie-backed auth status
 - `POST /auth/verify`: verify the demo access code
 - `POST /api-key`: create or return the single API key used by the workspace
-- `GET /agents`: list the latest trace for each `service_name`
+- `GET /agents`: list in-memory trace runs, including metadata and UI events, ordered by most recently updated first
 - `POST /v1/traces`: OTLP trace ingestion
 - `POST /v1/live`: transient live span-start ingestion
 - `GET /events`: SSE stream of live agent updates

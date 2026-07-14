@@ -58,7 +58,7 @@ def _normalized_id(value: object) -> str:
         return lowered_value
     try:
         return base64.b64decode(value, validate=True).hex()
-    except (ValueError, base64.binascii.Error):
+    except (ValueError, base64.binascii.Error): # type: ignore
         return value
 
 
@@ -118,7 +118,6 @@ def _span_to_events(span: dict, service_name: str) -> tuple[list[dict], dict[str
 
 def otlp_payload_to_run_events(payload: dict) -> list[ParsedTraceRun]:
     traces_by_id: dict[str, TraceAccumulator] = {}
-
     for resource_span in payload.get("resourceSpans", []):
         resource_attributes = _attribute_map(resource_span.get("resource", {}).get("attributes", []))
         service_name = str(resource_attributes.get("service.name", "unknown"))
@@ -128,7 +127,6 @@ def otlp_payload_to_run_events(payload: dict) -> list[ParsedTraceRun]:
                 trace_entry = traces_by_id.setdefault(trace_id, TraceAccumulator(service_name=service_name, spans=[]))
                 trace_entry.service_name = service_name
                 trace_entry.spans.append(span)
-
     parsed_trace_runs: list[ParsedTraceRun] = []
     for trace_id, trace_entry in traces_by_id.items():
         service_name = trace_entry.service_name
@@ -153,5 +151,4 @@ def otlp_payload_to_run_events(payload: dict) -> list[ParsedTraceRun]:
                 is_completed=is_completed,
             )
         )
-
     return parsed_trace_runs

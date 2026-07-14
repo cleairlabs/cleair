@@ -59,6 +59,9 @@ type GraphNodeAppearance = {
   border: string;
 };
 
+
+
+
 function buildChildrenMap(traceTree: TraceTreeState): Record<string, string[]> {
   const childrenByParentId: Record<string, string[]> = {};
   for (const nodeId of traceTree.nodeIdsInOrder) {
@@ -113,6 +116,7 @@ function buildExecutionSequence(traceTree: TraceTreeState) {
   return executionSequence;
 }
 
+
 export function buildGraphData(traceTree: TraceTreeState): { nodes: GraphNode[]; edges: GraphEdge[] } {
   const executionSequence = buildExecutionSequence(traceTree);
   const graphNodesById: Record<string, GraphNode> = {
@@ -146,6 +150,9 @@ export function buildGraphData(traceTree: TraceTreeState): { nodes: GraphNode[];
   return { nodes: Object.values(graphNodesById), edges: Object.values(graphEdgesById) };
 }
 
+
+
+
 function graphNodeColor(type: GraphNodeType) {
   if (type === "start") return { background: isDarkTheme() ? GRAPH_START_NODE_BACKGROUND_DARK : GRAPH_START_NODE_BACKGROUND_LIGHT, border: GRAPH_START_NODE_BORDER };
   if (type === "end") return { background: isDarkTheme() ? GRAPH_END_NODE_BACKGROUND_DARK : GRAPH_END_NODE_BACKGROUND_LIGHT, border: GRAPH_END_NODE_BORDER };
@@ -165,6 +172,7 @@ function selectedGraphNodeId(graphNodes: GraphNode[], selectedNodeId: string | n
   if (selectedNodeId === null) return null;
   return graphNodes.find((graphNode) => graphNode.flowNodeIds.includes(selectedNodeId))?.id ?? null;
 }
+
 
 export function TraceGraph({ traceTree, selectedNodeId, onSelectNode }: TraceViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);

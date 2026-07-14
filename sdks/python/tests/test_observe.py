@@ -18,7 +18,7 @@ def test_module_observe_without_parentheses_wraps_function(monkeypatch) -> None:
     wrapped = observe(target)
 
     assert wrapped is target
-    assert wrap_calls == [((target,), {"span_name": None, "attributes": None, "capture_output": False})]
+    assert wrap_calls == [((target,), {"span_name": None, "attributes": None, "capture_input": False, "capture_output": False})]
 
 
 def test_module_observe_merges_attributes_and_metadata(monkeypatch) -> None:
@@ -55,6 +55,7 @@ def test_module_observe_merges_attributes_and_metadata(monkeypatch) -> None:
                     "batch.id": "batch-1",
                     "session.id": "session-1",
                 },
+                "capture_input": False,
                 "capture_output": False,
             },
         )
@@ -73,7 +74,22 @@ def test_module_observe_capture_output_passes_through(monkeypatch) -> None:
     decorator = observe(capture_output=True)
     decorator(target)
 
-    assert wrap_calls == [((target,), {"span_name": None, "attributes": None, "capture_output": True})]
+    assert wrap_calls == [((target,), {"span_name": None, "attributes": None, "capture_input": False, "capture_output": True})]
+
+
+def test_module_observe_capture_input_passes_through(monkeypatch) -> None:
+    wrap_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    target = lambda: None
+
+    def fake_wrap(*args, **kwargs):
+        wrap_calls.append((args, kwargs))
+        return args[0]
+
+    monkeypatch.setattr(_core, "_wrap_observed_function", fake_wrap)
+    decorator = observe(capture_input=True)
+    decorator(target)
+
+    assert wrap_calls == [((target,), {"span_name": None, "attributes": None, "capture_input": True, "capture_output": False})]
 
 
 def test_module_observe_is_exposed_on_package() -> None:
@@ -89,7 +105,7 @@ def test_type_constants_are_exposed_on_package() -> None:
 
 
 def test_direct_observe_import_is_usable(monkeypatch) -> None:
-    monkeypatch.setattr(_core, "trace_call", lambda function, *args, **kwargs: function(*args))
+    monkeypatch.setattr(_core, "_trace_call_sync", lambda function, args, kwargs, **_options: function(*args, **kwargs))
 
     @observe()
     def target() -> str:

@@ -47,7 +47,7 @@ def otlp_payload(trace_id: str, service_name: str, span_id: str, label: str, *, 
 @pytest.fixture(autouse=True)
 def reset_app_state() -> None:
     original_auth_config = main.auth_config
-    original_store = main.store
+    original_store = main.trace_store
     main.auth_config = AuthConfig(
         enabled=True,
         secret_key="test-secret",
@@ -58,12 +58,12 @@ def reset_app_state() -> None:
         ),
         secure_cookie=False,
     )
-    main.store = TraceStore()
+    main.trace_store = TraceStore()
     try:
         yield
     finally:
         main.auth_config = original_auth_config
-        main.store = original_store
+        main.trace_store = original_store
 
 
 def test_protected_routes_require_authenticated_session() -> None:
@@ -122,7 +122,7 @@ def test_expired_signed_cookie_is_rejected() -> None:
 
 def test_trace_ingest_accepts_api_key_without_session() -> None:
     client = TestClient(main.app)
-    api_key = main.store.ensure_api_key()
+    api_key = main.trace_store.ensure_api_key()
 
     response = client.post(
         "/v1/traces",
@@ -191,7 +191,7 @@ def test_live_ingest_emits_running_node_before_otlp_completion() -> None:
 def test_trace_ingest_accepts_otlp_protobuf() -> None:
     client = TestClient(main.app)
     client.post("/auth/verify", json={"code": "123456"})
-    api_key = main.store.ensure_api_key()
+    api_key = main.trace_store.ensure_api_key()
     request_message = ExportTraceServiceRequest()
     resource_span = request_message.resource_spans.add()
     resource_attribute = resource_span.resource.attributes.add()
@@ -282,8 +282,8 @@ def test_agents_keep_multiple_runs_for_same_service_name() -> None:
 
 
 def test_stream_replays_existing_agent_events() -> None:
-    main.store.start_run("Agent", "run-1", metadata={"agent.id": "agent-1"})
-    main.store.append_events(
+    main.trace_store.start_run("Agent", "run-1", metadata={"agent.id": "agent-1"})
+    main.trace_store.append_events(
         "run-1",
         [
             {"type": "run_started", "runId": "run-1", "runLabel": "Agent", "metadata": {"agent.id": "agent-1"}},

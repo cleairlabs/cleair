@@ -108,7 +108,7 @@ def test_span_records_exception_and_reraises(monkeypatch) -> None:
     assert args[0].status_code == StatusCode.ERROR
 
 
-def test_trace_call_capture_output_adds_event(monkeypatch) -> None:
+def test_observe_capture_output_adds_event(monkeypatch) -> None:
     class FakeSpan:
         def __init__(self) -> None:
             self.events: list[tuple[str, dict[str, object]]] = []
@@ -144,13 +144,108 @@ def test_trace_call_capture_output_adds_event(monkeypatch) -> None:
     monkeypatch.setattr(_core, "_ensure_provider", lambda: object())
     _core.init(cleair_api_key="key")
 
+    @_core.observe(capture_output=True)
     def target() -> str:
         return "ok"
 
-    result = _core.trace_call(target, capture_output=True)
+    result = target()
 
     assert result == "ok"
     assert span.events == [("function.output", {"value": "ok"})]
+
+
+def test_observe_capture_input_adds_named_arguments_event(monkeypatch) -> None:
+    class FakeSpan:
+        def __init__(self) -> None:
+            self.events: list[tuple[str, dict[str, object]]] = []
+            self.attributes: dict[str, object] = {}
+
+        def __enter__(self) -> "FakeSpan":
+            return self
+
+        def __exit__(self, _exc_type, _exc, _tb) -> bool:
+            return False
+
+        def set_attribute(self, name: str, value: object) -> None:
+            self.attributes[name] = value
+
+        def record_exception(self, _exception: Exception) -> None:
+            return None
+
+        def set_status(self, _status: object) -> None:
+            return None
+
+        def add_event(self, name: str, attributes: dict[str, object] | None = None) -> None:
+            self.events.append((name, attributes or {}))
+
+    class FakeTracer:
+        def __init__(self, span: FakeSpan) -> None:
+            self.span = span
+
+        def start_as_current_span(self, _name: str, attributes=None) -> FakeSpan:
+            return self.span
+
+    span = FakeSpan()
+    monkeypatch.setattr(_core, "_tracer", lambda: FakeTracer(span))
+    monkeypatch.setattr(_core, "_ensure_provider", lambda: object())
+    _core.init(cleair_api_key="key")
+
+    @_core.observe(capture_input=True)
+    def target(query: str, limit: int) -> str:
+        return query
+
+    result = target("weather", limit=3)
+
+    assert result == "weather"
+    assert span.events == [("function.input", {"value": "{'query': 'weather', 'limit': 3}"})]
+
+
+def test_observe_capture_input_skips_self(monkeypatch) -> None:
+    class FakeSpan:
+        def __init__(self) -> None:
+            self.events: list[tuple[str, dict[str, object]]] = []
+            self.attributes: dict[str, object] = {}
+
+        def __enter__(self) -> "FakeSpan":
+            return self
+
+        def __exit__(self, _exc_type, _exc, _tb) -> bool:
+            return False
+
+        def set_attribute(self, name: str, value: object) -> None:
+            self.attributes[name] = value
+
+        def record_exception(self, _exception: Exception) -> None:
+            return None
+
+        def set_status(self, _status: object) -> None:
+            return None
+
+        def add_event(self, name: str, attributes: dict[str, object] | None = None) -> None:
+            self.events.append((name, attributes or {}))
+
+    class FakeTracer:
+        def __init__(self, span: FakeSpan) -> None:
+            self.span = span
+
+        def start_as_current_span(self, _name: str, attributes=None) -> FakeSpan:
+            return self.span
+
+    class Agent:
+        @_core.observe(capture_input=True)
+        def run(self, prompt: str) -> str:
+            return prompt
+
+    span = FakeSpan()
+    monkeypatch.setattr(_core, "_tracer", lambda: FakeTracer(span))
+    monkeypatch.setattr(_core, "_ensure_provider", lambda: object())
+    _core.init(cleair_api_key="key")
+    agent = Agent()
+
+    result = agent.run("hello")
+
+    assert result == "hello"
+    assert span.events == [("function.input", {"value": "{'prompt': 'hello'}"})]
 
 
 def test_observe_async_wraps_coroutine(monkeypatch) -> None:
@@ -170,6 +265,26 @@ def test_observe_async_wraps_coroutine(monkeypatch) -> None:
     assert greet.__name__ == "greet"
     result = asyncio.run(greet("world"))
     assert result == "hi world"
+
+
+def test_observe_allows_user_capture_input_keyword() -> None:
+    _core.init(enabled=False)
+
+    @_core.observe()
+    def target(capture_input: bool) -> bool:
+        return capture_input
+
+    assert target(capture_input=True) is True
+
+
+def test_observe_async_allows_user_capture_input_keyword() -> None:
+    _core.init(enabled=False)
+
+    @_core.observe()
+    async def target(capture_input: bool) -> bool:
+        return capture_input
+
+    assert asyncio.run(target(capture_input=True)) is True
 
 
 def test_start_run_creates_new_root_and_propagates_metadata(monkeypatch) -> None:

@@ -19,7 +19,7 @@ pip install -e sdks/python
 ```python
 from cleair import observe
 
-@observe(name="story", capture_output=True)
+@observe(name="story", capture_input=True, capture_output=True)
 def story() -> None:
     ...
 
@@ -48,6 +48,8 @@ with cleair.start_run("agent.run", agent_id="agent-7", batch_id="batch-42"):
 ```
 
 Use `metadata={...}` only for arbitrary extra fields that do not have a first-class parameter.
+
+Use `capture_input=True` and `capture_output=True` only when captured values are safe to send to cleAIr.
 
 By default, cleAIr uses `https://api.cleair.ai`, exports OTLP traces to
 `/v1/traces`, and sends best-effort live span starts to `/v1/live`. OTLP remains
