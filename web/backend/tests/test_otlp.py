@@ -26,6 +26,10 @@ def test_otlp_payload_to_run_events_preserves_ui_fields_from_otlp() -> None:
                                 ],
                                 "events": [
                                     {
+                                        "name": "function.input",
+                                        "attributes": [{"key": "value", "value": {"stringValue": "{'query': 'weather'}"}}],
+                                    },
+                                    {
                                         "name": "function.output",
                                         "attributes": [{"key": "value", "value": {"stringValue": "done"}}],
                                     }
@@ -54,6 +58,7 @@ def test_otlp_payload_to_run_events_preserves_ui_fields_from_otlp() -> None:
                         "label": "LoadDashboard",
                         "subtitle": "frontend",
                         "type": "agent",
+                        "input": "{'query': 'weather'}",
                     },
                 },
                 {"type": "node_status_changed", "nodeId": "span-1", "status": "running"},

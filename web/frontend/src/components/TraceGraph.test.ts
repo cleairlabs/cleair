@@ -9,8 +9,28 @@ function createTraceTreeState(): TraceTreeState {
     isCompleted: true,
     nodeIdsInOrder: ["root", "child"],
     nodesById: {
-      root: { id: "root", parentId: null, label: "agent", subtitle: "Agent", type: "agent", status: "done", durationMs: 20, output: null },
-      child: { id: "child", parentId: "root", label: "tool", subtitle: "Agent", type: "tool", status: "done", durationMs: 10, output: null },
+      root: {
+        id: "root",
+        parentId: null,
+        label: "agent",
+        subtitle: "Agent",
+        type: "agent",
+        status: "done",
+        durationMs: 20,
+        input: null,
+        output: null,
+      },
+      child: {
+        id: "child",
+        parentId: "root",
+        label: "tool",
+        subtitle: "Agent",
+        type: "tool",
+        status: "done",
+        durationMs: 10,
+        input: null,
+        output: null,
+      },
     },
   };
 }
@@ -43,6 +63,7 @@ describe("buildGraphData", () => {
           type: "agent",
           status: "done",
           durationMs: 20,
+          input: null,
           output: null,
         },
         "call-llm": {
@@ -53,6 +74,7 @@ describe("buildGraphData", () => {
           type: "tool",
           status: "done",
           durationMs: 10,
+          input: null,
           output: null,
         },
       },

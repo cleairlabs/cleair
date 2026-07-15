@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="cleAIr backend")
-store = TraceStore()
+trace_store = TraceStore()
 auth_config = load_auth_config()
 allowed_origins = [
     origin for origin in os.environ.get("CLEAIR_ALLOWED_ORIGINS", "http://localhost:5173").split(",") if origin
@@ -48,12 +48,16 @@ app.add_middleware(
 )
 
 
+
+########################
+# HELPERS
+########################
 def _authenticate_ingestion(request: Request) -> None:
     authorization_parts = request.headers.get("Authorization", "").split()
     if len(authorization_parts) != 2 or authorization_parts[0].lower() != "bearer":
         raise HTTPException(status_code=401, detail="Invalid bearer token", headers={"WWW-Authenticate": "Bearer"})
     api_key = authorization_parts[1]
-    if not store.has_api_key(api_key):
+    if not trace_store.has_api_key(api_key):
         raise HTTPException(status_code=401, detail="Invalid bearer token", headers={"WWW-Authenticate": "Bearer"})
 
 
@@ -68,7 +72,7 @@ def _otlp_payload(body: bytes, content_type: str) -> dict:
 
 
 async def _generate_sse():
-    queue, replay_events = store.subscribe()
+    queue, replay_events = trace_store.subscribe()
     try:
         for event in replay_events:
             yield f"data: {json.dumps(event)}\n\n"
@@ -79,7 +83,10 @@ async def _generate_sse():
             except asyncio.TimeoutError:
                 yield ":\n\n"
     finally:
-        store.unsubscribe(queue)
+        trace_store.unsubscribe(queue)
+########################
+
+
 
 
 @app.get("/auth/session")
@@ -106,19 +113,19 @@ async def auth_logout(response: Response) -> Response:
 @app.post("/api-key", status_code=201)
 async def create_api_key(request: Request) -> dict:
     require_authenticated_request(request, auth_config)
-    return {"apiKey": store.ensure_api_key()}
+    return {"apiKey": trace_store.ensure_api_key()}
 
 
 @app.get("/agents")
 async def list_agents(request: Request) -> list[dict]:
     require_authenticated_request(request, auth_config)
-    return store.list_agents()
+    return trace_store.list_agents()
 
 
 @app.delete("/agents/{run_id}", status_code=204)
 async def delete_agent(request: Request, run_id: str) -> None:
     require_authenticated_request(request, auth_config)
-    if not store.delete_run(run_id):
+    if not trace_store.delete_run(run_id):
         raise HTTPException(status_code=404, detail="Unknown runId")
 
 
@@ -127,12 +134,12 @@ async def ingest_otlp_traces(request: Request) -> None:
     _authenticate_ingestion(request)
     payload = _otlp_payload(await request.body(), request.headers.get("content-type", "application/json"))
     for trace_run in otlp_payload_to_run_events(payload):
-        is_new_run = store.start_run(trace_run.service_name, trace_run.trace_id, metadata=trace_run.metadata)
+        is_new_run = trace_store.start_run(trace_run.service_name, trace_run.trace_id, metadata=trace_run.metadata)
         events_to_emit = [{"type": "run_started", "runId": trace_run.trace_id, "runLabel": trace_run.service_name, "metadata": trace_run.metadata}] if is_new_run else []
         events_to_emit.extend(trace_run.events)
-        store.append_events(trace_run.trace_id, events_to_emit)
+        trace_store.append_events(trace_run.trace_id, events_to_emit)
         if trace_run.is_completed:
-            store.mark_completed(trace_run.trace_id)
+            trace_store.mark_completed(trace_run.trace_id)
         logger.info("Ingested %d events for trace %s (%s)", len(events_to_emit), trace_run.trace_id, trace_run.service_name)
 
 
@@ -140,10 +147,10 @@ async def ingest_otlp_traces(request: Request) -> None:
 async def ingest_live_span_start(request: Request) -> None:
     _authenticate_ingestion(request)
     run_id, service_name, metadata, events = live_payload_to_events(await request.json())
-    is_new_run = store.start_run(service_name, run_id, metadata=metadata)
+    is_new_run = trace_store.start_run(service_name, run_id, metadata=metadata)
     events_to_emit = [{"type": "run_started", "runId": run_id, "runLabel": service_name, "metadata": metadata}] if is_new_run else []
     events_to_emit.extend(events)
-    store.append_events(run_id, events_to_emit)
+    trace_store.append_events(run_id, events_to_emit)
 
 
 @app.get("/events")
@@ -160,12 +167,9 @@ def run() -> None:
     parser = argparse.ArgumentParser(description="Run the cleAIr backend.")
     parser.add_argument("--host", default=os.environ.get("CLEAIR_BACKEND_HOST", "0.0.0.0"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("CLEAIR_BACKEND_PORT", "8000")))
-    parser.add_argument(
-        "--reload",
-        action="store_true",
-        default=os.environ.get("CLEAIR_BACKEND_RELOAD", "").lower() in {"1", "true", "yes", "on"},
-        help="Enable autoreload for local development.",
-    )
+    parser.add_argument("--reload", action="store_true",
+                        default=os.environ.get("CLEAIR_BACKEND_RELOAD", "").lower() in {"1", "true", "yes", "on"},
+                        help="Enable autoreload for local development.")
     args = parser.parse_args()
     uvicorn.run("cleair_backend.main:app", host=args.host, port=args.port, reload=args.reload)
 

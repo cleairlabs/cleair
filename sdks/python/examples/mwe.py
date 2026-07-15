@@ -29,7 +29,7 @@ def call_llm(prompt: str) -> str:
     return output if validate_len(output) else "Too long"
 
 
-@cleair.observe(name="research", as_type=cleair.type.AGENT)
+@cleair.observe(name="research", capture_input=True, as_type=cleair.type.AGENT)
 def research(topic: str) -> str:
     urls = web_search(topic)
     pages = [fetch_page(url) for url in urls[:2]]

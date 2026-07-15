@@ -9,8 +9,15 @@ export function applyTraceTreeEvent(graph: TraceTreeState, event: TraceTreeEvent
     case "run_started":
       return createEmptyTraceTree(event.runId, event.runLabel);
     case "node_added": {
-      if (graph.nodesById[event.node.id]) return graph;
-      const newNode: FlowNode = { ...event.node, status: "idle", durationMs: null, output: null };
+      const existingNode = graph.nodesById[event.node.id];
+      if (existingNode) {
+        if (existingNode.input !== null || event.node.input === undefined) return graph;
+        return {
+          ...graph,
+          nodesById: { ...graph.nodesById, [event.node.id]: { ...existingNode, input: event.node.input } },
+        };
+      }
+      const newNode: FlowNode = { ...event.node, input: event.node.input ?? null, status: "idle", durationMs: null, output: null };
       return {
         ...graph,
         nodesById: { ...graph.nodesById, [newNode.id]: newNode },

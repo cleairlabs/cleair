@@ -36,6 +36,16 @@ def _format_attribute_value(value: object) -> str | int | float | bool:
     return repr(value)
 
 
+def _format_function_input(function, args: tuple[object, ...], kwargs: dict[str, object]) -> str | int | float | bool:
+    bound_arguments = inspect.signature(function).bind_partial(*args, **kwargs)
+    captured_arguments = {
+        name: value
+        for name, value in bound_arguments.arguments.items()
+        if name not in {"self", "cls"}
+    }
+    return _format_attribute_value(captured_arguments)
+
+
 def _merge_observe_attributes(*,
                               attributes: dict[str, str | int | float | bool] | None,
                               metadata: dict[str, str | int | float | bool] | None,
@@ -168,13 +178,14 @@ def start_run(name: str,
         _run_attributes.reset(token)
 
 
-def trace_call(function,
-               /,
-               *args,
-               span_name: str | None = None,
-               attributes: dict[str, str | int | float | bool] | None = None,
-               capture_output: bool = False,
-               **kwargs,):
+def _trace_call_sync(function,
+                     args: tuple[object, ...],
+                     kwargs: dict[str, object],
+                     *,
+                     span_name: str | None = None,
+                     attributes: dict[str, str | int | float | bool] | None = None,
+                     capture_input: bool = False,
+                     capture_output: bool = False,):
     config = _resolve_config()
     if not config.enabled:
         return function(*args, **kwargs)
@@ -182,6 +193,8 @@ def trace_call(function,
     with span(name, attributes=attributes) as span_handle:
         start = time.perf_counter()
         try:
+            if capture_input and span_handle is not None:
+                span_handle.add_event("function.input", {"value": _format_function_input(function, args, kwargs)})
             result = function(*args, **kwargs)
             if capture_output and span_handle is not None:
                 span_handle.add_event("function.output", {"value": _format_attribute_value(result)})
@@ -192,12 +205,13 @@ def trace_call(function,
 
 
 async def _trace_call_async(function,
-                            /,
-                            *args,
+                            args: tuple[object, ...],
+                            kwargs: dict[str, object],
+                            *,
                             span_name: str | None = None,
                             attributes: dict[str, str | int | float | bool] | None = None,
-                            capture_output: bool = False,
-                            **kwargs,):
+                            capture_input: bool = False,
+                            capture_output: bool = False,):
     config = _resolve_config()
     if not config.enabled:
         return await function(*args, **kwargs)
@@ -205,6 +219,8 @@ async def _trace_call_async(function,
     with span(name, attributes=attributes) as span_handle:
         start = time.perf_counter()
         try:
+            if capture_input and span_handle is not None:
+                span_handle.add_event("function.input", {"value": _format_function_input(function, args, kwargs)})
             result = await function(*args, **kwargs)
             if capture_output and span_handle is not None:
                 span_handle.add_event("function.output", {"value": _format_attribute_value(result)})
@@ -219,18 +235,28 @@ def _wrap_observed_function(function,
                             *,
                             span_name: str | None = None,
                             attributes: dict[str, str | int | float | bool] | None = None,
+                            capture_input: bool = False,
                             capture_output: bool = False,):
     if inspect.iscoroutinefunction(function):
         @functools.wraps(function)
         async def wrapped_async(*args, **kwargs):
-            return await _trace_call_async(
-                function, *args, span_name=span_name, attributes=attributes, capture_output=capture_output, **kwargs
-            )
+            return await _trace_call_async(function,
+                                           args,
+                                           kwargs,
+                                           span_name=span_name,
+                                           attributes=attributes,
+                                           capture_input=capture_input,
+                                           capture_output=capture_output)
         return wrapped_async
-
     @functools.wraps(function)
     def wrapped_sync(*args, **kwargs):
-        return trace_call(function, *args, span_name=span_name, attributes=attributes, capture_output=capture_output, **kwargs)
+        return _trace_call_sync(function,
+                                args,
+                                kwargs,
+                                span_name=span_name,
+                                attributes=attributes,
+                                capture_input=capture_input,
+                                capture_output=capture_output)
     return wrapped_sync
 
 
@@ -244,25 +270,16 @@ def observe(function=None,
             agent_id: str | None = None,
             batch_id: str | None = None,
             session_id: str | None = None,
+            capture_input: bool = False,
             capture_output: bool = False,):
     resolved_span_name = span_name or name
-    resolved_attributes = _merge_observe_attributes(
-        attributes=as_type,
-        metadata=metadata,
-        agent_id=agent_id,
-        batch_id=batch_id,
-        session_id=session_id,
-    )
+    resolved_attributes = _merge_observe_attributes(attributes=as_type, metadata=metadata,
+                                                    agent_id=agent_id, batch_id=batch_id, session_id=session_id,)
     if function is None:
-        return functools.partial(
-            _wrap_observed_function,
-            span_name=resolved_span_name,
-            attributes=resolved_attributes,
-            capture_output=capture_output,
-        )
-    return _wrap_observed_function(
-        function, span_name=resolved_span_name, attributes=resolved_attributes, capture_output=capture_output
-    )
+        return functools.partial(_wrap_observed_function, span_name=resolved_span_name, attributes=resolved_attributes,
+                                 capture_input=capture_input, capture_output=capture_output)
+    return _wrap_observed_function(function, span_name=resolved_span_name, attributes=resolved_attributes,
+                                   capture_input=capture_input, capture_output=capture_output)
 
 
 def flush() -> None:
