@@ -71,13 +71,12 @@ def _run_metadata(span_attributes: dict[str, str | int | float | bool]) -> dict[
     return {key: value for key, value in span_attributes.items() if key not in RUN_METADATA_EXCLUDED_KEYS}
 
 
-def _span_output(span: dict) -> str | None:
+def _span_event_value(span: dict, event_name: str) -> str | None:
     for span_event in span.get("events", []):
-        if span_event.get("name") != "function.output":
+        if span_event.get("name") != event_name:
             continue
-        event_attributes = _attribute_map(span_event.get("attributes", []))
-        output_value = event_attributes.get("value")
-        return None if output_value is None else str(output_value)
+        event_value = _attribute_map(span_event.get("attributes", [])).get("value")
+        return None if event_value is None else str(event_value)
     return None
 
 
@@ -91,29 +90,26 @@ def _span_to_events(span: dict, service_name: str) -> tuple[list[dict], dict[str
     duration_ms = max(0, (end_ns - start_ns) // 1_000_000)
     status_code = span.get("status", {}).get("code", "STATUS_CODE_UNSET")
     node_status = "error" if status_code == "STATUS_CODE_ERROR" else "done"
+    node = {
+        "id": span_id,
+        "parentId": parent_span_id,
+        "label": name,
+        "subtitle": service_name,
+        "type": _span_type(span_attributes),
+    }
+    input_value = _span_event_value(span, "function.input")
+    if input_value is not None:
+        node["input"] = input_value
     node_finished_event: dict[str, str | int] = {"type": "node_finished", "nodeId": span_id, "durationMs": duration_ms}
-    output = _span_output(span)
+    output = _span_event_value(span, "function.output")
     if output is not None:
         node_finished_event["output"] = output
-    return (
-        [
-            {
-                "type": "node_added",
-                "node": {
-                    "id": span_id,
-                    "parentId": parent_span_id,
-                    "label": name,
-                    "subtitle": service_name,
-                    "type": _span_type(span_attributes),
-                },
-            },
-            {"type": "node_status_changed", "nodeId": span_id, "status": "running"},
-            {"type": "node_status_changed", "nodeId": span_id, "status": node_status},
-            node_finished_event,
-        ],
-        _run_metadata(span_attributes),
-        not parent_span_id,
-    )
+    return ([{"type": "node_added", "node": node,},
+             {"type": "node_status_changed", "nodeId": span_id, "status": "running"},
+             {"type": "node_status_changed", "nodeId": span_id, "status": node_status},
+             node_finished_event],
+             _run_metadata(span_attributes),
+             not parent_span_id)
 
 
 def otlp_payload_to_run_events(payload: dict) -> list[ParsedTraceRun]:

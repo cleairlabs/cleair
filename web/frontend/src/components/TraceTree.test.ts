@@ -53,6 +53,7 @@ describe("buildTreeEntries", () => {
           type: "agent",
           status: "done",
           durationMs: 10,
+          input: null,
           output: null,
         },
         "call-llm": {
@@ -63,6 +64,7 @@ describe("buildTreeEntries", () => {
           type: "tool",
           status: "done",
           durationMs: 5,
+          input: null,
           output: null,
         },
       },

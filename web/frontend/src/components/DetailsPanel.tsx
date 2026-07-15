@@ -32,10 +32,16 @@ export function DetailsPanel({ selectedNode, traceTree, doneCount, errorCount }:
                 <span className="detail-value">{formatDuration(selectedNode.durationMs)}</span>
               </div>
             )}
+            {selectedNode.input !== null && (
+              <div className="detail-section">
+                <span className="detail-label">Input</span>
+                <pre className="detail-params">{selectedNode.input}</pre>
+              </div>
+            )}
             {selectedNode.output !== null && (
               <div className="detail-section">
                 <span className="detail-label">Output</span>
-                <pre className="detail-output">{selectedNode.output}</pre>
+                <pre className="detail-params">{selectedNode.output}</pre>
               </div>
             )}
           </>

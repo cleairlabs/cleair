@@ -25,7 +25,7 @@ describe("flow graph reducer", () => {
 
     graph = applyTraceTreeEvent(graph, {
       type: "node_added",
-      node: { id: "b", parentId: "a", label: "B", subtitle: "end", type: "tool" },
+      node: { id: "b", parentId: "a", label: "B", subtitle: "end", type: "tool", input: "{'query': 'weather'}" },
     });
 
     graph = applyTraceTreeEvent(graph, { type: "node_status_changed", nodeId: "b", status: "running" });
@@ -34,6 +34,7 @@ describe("flow graph reducer", () => {
     graph = applyTraceTreeEvent(graph, { type: "run_completed" });
 
     expect(graph.nodeIdsInOrder).toEqual(["a", "b"]);
+    expect(graph.nodesById.b.input).toBe("{'query': 'weather'}");
     expect(graph.nodesById.b.status).toBe("done");
     expect(graph.nodesById.b.durationMs).toBe(420);
     expect(graph.isCompleted).toBe(true);
@@ -48,6 +49,21 @@ describe("flow graph reducer", () => {
     graph = applyTraceTreeEvent(graph, nodeEvent);
     graph = applyTraceTreeEvent(graph, nodeEvent);
     expect(graph.nodeIdsInOrder).toHaveLength(1);
+  });
+
+  test("merges input from duplicate node_added", () => {
+    let graph = createEmptyTraceTree("run-1", "test");
+    graph = applyTraceTreeEvent(graph, {
+      type: "node_added",
+      node: { id: "x", parentId: null, label: "X", subtitle: "", type: "agent" },
+    });
+    graph = applyTraceTreeEvent(graph, {
+      type: "node_added",
+      node: { id: "x", parentId: null, label: "X", subtitle: "", type: "agent", input: "{'topic': 'quantum computing'}" },
+    });
+
+    expect(graph.nodeIdsInOrder).toHaveLength(1);
+    expect(graph.nodesById.x.input).toBe("{'topic': 'quantum computing'}");
   });
 
   test("ignores status change to same status", () => {
