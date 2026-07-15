@@ -11,7 +11,7 @@ Then, to try cleair in action, create a file named `example.py`:
 ```python
 import cleair
 
-@cleair.observe(name="research", capture_output=True, as_type=cleair.type.AGENT)
+@cleair.observe(name="research", capture_input=True, capture_output=True, as_type=cleair.type.AGENT)
 def research(topic: str) -> str:
     return f"Research result for {topic}"
 

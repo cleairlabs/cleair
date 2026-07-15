@@ -6,6 +6,7 @@ docs_dir: content
 site_dir: ../site
 nav:
   - Getting started: index.md
+  - Observe functions: observe.md
 markdown_extensions:
   - attr_list
   - admonition
