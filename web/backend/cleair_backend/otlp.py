@@ -4,6 +4,9 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 
+from cleair_backend.providers import provider_span_presentation
+from cleair_backend.providers.models import SpanPresentation
+
 
 RUN_METADATA_EXCLUDED_KEYS = frozenset({"cleair.type", "duration_ms"})
 
@@ -67,15 +70,22 @@ def _span_type(span_attributes: dict[str, str | int | float | bool]) -> str:
     return str(span_type) if span_type is not None else "tool"
 
 
+def _span_presentation(span_name: str, span_attributes: dict[str, str | int | float | bool], service_name: str) -> SpanPresentation:
+    provider_presentation = provider_span_presentation(span_name, span_attributes, service_name)
+    if provider_presentation is not None:
+        return provider_presentation
+    return SpanPresentation(label=span_name, node_type=_span_type(span_attributes), subtitle=service_name)
+
+
 def _run_metadata(span_attributes: dict[str, str | int | float | bool]) -> dict[str, str | int | float | bool]:
     return {key: value for key, value in span_attributes.items() if key not in RUN_METADATA_EXCLUDED_KEYS}
 
 
-def _span_event_value(span: dict, event_name: str) -> str | None:
+def _span_event_value(span: dict, event_name: str, attribute_name: str = "value") -> str | None:
     for span_event in span.get("events", []):
         if span_event.get("name") != event_name:
             continue
-        event_value = _attribute_map(span_event.get("attributes", [])).get("value")
+        event_value = _attribute_map(span_event.get("attributes", [])).get(attribute_name)
         return None if event_value is None else str(event_value)
     return None
 
@@ -90,18 +100,21 @@ def _span_to_events(span: dict, service_name: str) -> tuple[list[dict], dict[str
     duration_ms = max(0, (end_ns - start_ns) // 1_000_000)
     status_code = span.get("status", {}).get("code", "STATUS_CODE_UNSET")
     node_status = "error" if status_code == "STATUS_CODE_ERROR" else "done"
+    span_presentation = _span_presentation(name, span_attributes, service_name)
     node = {
         "id": span_id,
         "parentId": parent_span_id,
-        "label": name,
-        "subtitle": service_name,
-        "type": _span_type(span_attributes),
+        "label": span_presentation.label,
+        "subtitle": span_presentation.subtitle,
+        "type": span_presentation.node_type,
     }
-    input_value = _span_event_value(span, "function.input")
+    input_value = span_presentation.input_value or _span_event_value(span, "function.input")
     if input_value is not None:
         node["input"] = input_value
     node_finished_event: dict[str, str | int] = {"type": "node_finished", "nodeId": span_id, "durationMs": duration_ms}
     output = _span_event_value(span, "function.output")
+    if output is None and span_presentation.output_event_name is not None:
+        output = _span_event_value(span, span_presentation.output_event_name, span_presentation.output_attribute_name)
     if output is not None:
         node_finished_event["output"] = output
     return ([{"type": "node_added", "node": node,},
