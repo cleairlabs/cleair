@@ -13,3 +13,10 @@ def provider_span_presentation(span_name: str, span_attributes: dict[str, SpanAt
         if provider_adapter.supports(span_name):
             return provider_adapter.present(span_name, span_attributes, service_name)
     return None
+
+
+def provider_run_metadata(span_name: str, span_attributes: dict[str, SpanAttributeValue]) -> dict[str, SpanAttributeValue]:
+    for provider_adapter in PROVIDER_ADAPTERS:
+        if provider_adapter.supports(span_name):
+            return provider_adapter.run_metadata(span_name, span_attributes)
+    return {}

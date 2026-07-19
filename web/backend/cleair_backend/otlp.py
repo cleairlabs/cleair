@@ -4,7 +4,7 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 
-from cleair_backend.providers import provider_span_presentation
+from cleair_backend.providers import provider_run_metadata, provider_span_presentation
 from cleair_backend.providers.models import SpanPresentation
 
 
@@ -121,8 +121,7 @@ def _span_to_events(span: dict, service_name: str) -> tuple[list[dict], dict[str
              {"type": "node_status_changed", "nodeId": span_id, "status": "running"},
              {"type": "node_status_changed", "nodeId": span_id, "status": node_status},
              node_finished_event],
-             _run_metadata(span_attributes),
-             not parent_span_id)
+             {**_run_metadata(span_attributes), **provider_run_metadata(name, span_attributes)}, not parent_span_id)
 
 
 def otlp_payload_to_run_events(payload: dict) -> list[ParsedTraceRun]:

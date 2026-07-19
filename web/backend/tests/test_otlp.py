@@ -168,6 +168,7 @@ def test_otlp_payload_to_run_events_presents_claude_code_spans() -> None:
                                 "name": "claude_code.interaction",
                                 "startTimeUnixNano": "1000",
                                 "endTimeUnixNano": "2001000",
+                                "attributes": [{"key": "session.id", "value": {"stringValue": "session-1"}}],
                             },
                             {
                                 "traceId": "trace-1",
@@ -196,6 +197,7 @@ def test_otlp_payload_to_run_events_presents_claude_code_spans() -> None:
 
     events = otlp_payload_to_run_events(payload)
 
+    assert events[0].metadata == {"session.id": "session-1", "batch.id": "session-1"}
     assert events[0].events[0]["node"] == {
         "id": "0000000000000001",
         "parentId": None,

@@ -20,7 +20,13 @@ class SpanPresentation:
 
 class ProviderAdapter(Protocol):
     def supports(self, span_name: str) -> bool:
+        """Logic for identifying provider-owned span names."""
         ...
 
     def present(self, span_name: str, span_attributes: dict[str, SpanAttributeValue], service_name: str) -> SpanPresentation | None:
+        """Logic for presenting a provider span in the trace UI."""
+        ...
+
+    def run_metadata(self, span_name: str, span_attributes: dict[str, SpanAttributeValue]) -> dict[str, SpanAttributeValue]:
+        """Logic for extracting provider-specific run metadata."""
         ...

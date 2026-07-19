@@ -8,6 +8,11 @@ class ClaudeCodeAdapter:
     def supports(self, span_name: str) -> bool:
         return span_name.startswith("claude_code.")
 
+    def run_metadata(self, span_name: str, span_attributes: dict[str, SpanAttributeValue]) -> dict[str, SpanAttributeValue]:
+        if span_name != "claude_code.interaction" or "session.id" not in span_attributes:
+            return {}
+        return {"batch.id": str(span_attributes["session.id"])}
+
     def present(self, span_name: str, span_attributes: dict[str, SpanAttributeValue], service_name: str) -> SpanPresentation | None:
         if span_name == "claude_code.interaction":
             return SpanPresentation(label="Claude Code", node_type="agent", subtitle="Interaction")
