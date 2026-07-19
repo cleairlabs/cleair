@@ -152,3 +152,68 @@ def test_otlp_payload_to_run_events_uses_only_root_span_metadata() -> None:
             is_completed=True,
         )
     ]
+
+
+def test_otlp_payload_to_run_events_presents_claude_code_spans() -> None:
+    payload = {
+        "resourceSpans": [
+            {
+                "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "claude-code"}}]},
+                "scopeSpans": [
+                    {
+                        "spans": [
+                            {
+                                "traceId": "trace-1",
+                                "spanId": "0000000000000001",
+                                "name": "claude_code.interaction",
+                                "startTimeUnixNano": "1000",
+                                "endTimeUnixNano": "2001000",
+                            },
+                            {
+                                "traceId": "trace-1",
+                                "spanId": "0000000000000002",
+                                "parentSpanId": "0000000000000001",
+                                "name": "claude_code.tool",
+                                "startTimeUnixNano": "2000",
+                                "endTimeUnixNano": "3001000",
+                                "attributes": [
+                                    {"key": "tool_name", "value": {"stringValue": "Bash"}},
+                                    {"key": "full_command", "value": {"stringValue": "pytest"}},
+                                ],
+                                "events": [
+                                    {
+                                        "name": "tool.output",
+                                        "attributes": [{"key": "output", "value": {"stringValue": "3 passed"}}],
+                                    }
+                                ],
+                            },
+                        ]
+                    }
+                ],
+            }
+        ]
+    }
+
+    events = otlp_payload_to_run_events(payload)
+
+    assert events[0].events[0]["node"] == {
+        "id": "0000000000000001",
+        "parentId": None,
+        "label": "Claude Code",
+        "subtitle": "Interaction",
+        "type": "agent",
+    }
+    assert events[0].events[4]["node"] == {
+        "id": "0000000000000002",
+        "parentId": "0000000000000001",
+        "label": "Bash",
+        "subtitle": "Claude Code",
+        "type": "tool",
+        "input": "Command: pytest",
+    }
+    assert events[0].events[7] == {
+        "type": "node_finished",
+        "nodeId": "0000000000000002",
+        "durationMs": 2,
+        "output": "3 passed",
+    }
