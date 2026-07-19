@@ -1,8 +1,6 @@
-# Agent integrations
+# Claude & Codex integrations
 
-cleAIr receives OpenTelemetry (OTLP) traces at its trace endpoint. An integration may use the generic OTLP span view or a provider adapter that turns provider-specific span names and attributes into cleAIr node labels and types.
-
-For local development, the trace endpoint is `http://localhost:8000/v1/traces`. The cleAIr web UI runs separately at `http://localhost:5173`; do not send telemetry to the UI port.
+cleAIr receives OpenTelemetry (OTLP) traces at its hosted trace endpoint, `https://api.cleair.ai/v1/traces`. An integration may use the generic OTLP span view or a provider adapter that turns provider-specific span names and attributes into cleAIr node labels and types.
 
 
 
@@ -10,10 +8,10 @@ For local development, the trace endpoint is `http://localhost:8000/v1/traces`. 
 ## Claude Code
 Claude Code can export native OTLP traces. cleAIr maps its documented `claude_code.*` spans into the trace UI:
 
-- interactions become agent steps;
-- model requests become intelligence steps;
-- tools, hook executions, and tool executions become tool steps;
-- permission waits become human steps.
+- interactions become `cleair.type.agent` steps;
+- model requests become `cleair.type.intelligence` steps;
+- tools, hook executions, and tool executions become `cleair.type.tool` steps;
+- permission waits become `cleair.type.human` steps.
 
 
 ### Run Claude Code with cleAIr
@@ -30,7 +28,7 @@ export CLAUDE_CODE_ENABLE_TELEMETRY=1
 export CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1
 export OTEL_TRACES_EXPORTER=otlp
 export OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf
-export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:8000/v1/traces
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://api.cleair.ai/v1/traces
 export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer ${CLEAIR_API_KEY}"
 export OTEL_LOG_TOOL_DETAILS=1
 export OTEL_LOG_USER_PROMPTS=1
