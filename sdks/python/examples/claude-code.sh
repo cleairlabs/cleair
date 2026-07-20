@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 set -euo pipefail
 
 read -r -s -p "Cleair API key: " CLEAIR_API_KEY
