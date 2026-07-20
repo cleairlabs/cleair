@@ -134,8 +134,13 @@ async def ingest_otlp_traces(request: Request) -> None:
     _authenticate_ingestion(request)
     payload = _otlp_payload(await request.body(), request.headers.get("content-type", "application/json"))
     for trace_run in otlp_payload_to_run_events(payload):
-        is_new_run = trace_store.start_run(trace_run.service_name, trace_run.trace_id, metadata=trace_run.metadata)
-        events_to_emit = [{"type": "run_started", "runId": trace_run.trace_id, "runLabel": trace_run.service_name, "metadata": trace_run.metadata}] if is_new_run else []
+        is_new_run, metadata_updated = trace_store.start_run(trace_run.service_name, trace_run.trace_id, metadata=trace_run.metadata)
+        if is_new_run:
+            events_to_emit = [{"type": "run_started", "runId": trace_run.trace_id, "runLabel": trace_run.service_name, "metadata": trace_run.metadata}]
+        elif metadata_updated:
+            events_to_emit = [{"type": "run_metadata_updated", "metadata": trace_run.metadata}]
+        else:
+            events_to_emit = []
         events_to_emit.extend(trace_run.events)
         trace_store.append_events(trace_run.trace_id, events_to_emit)
         if trace_run.is_completed:
@@ -147,8 +152,13 @@ async def ingest_otlp_traces(request: Request) -> None:
 async def ingest_live_span_start(request: Request) -> None:
     _authenticate_ingestion(request)
     run_id, service_name, metadata, events = live_payload_to_events(await request.json())
-    is_new_run = trace_store.start_run(service_name, run_id, metadata=metadata)
-    events_to_emit = [{"type": "run_started", "runId": run_id, "runLabel": service_name, "metadata": metadata}] if is_new_run else []
+    is_new_run, metadata_updated = trace_store.start_run(service_name, run_id, metadata=metadata)
+    if is_new_run:
+        events_to_emit = [{"type": "run_started", "runId": run_id, "runLabel": service_name, "metadata": metadata}]
+    elif metadata_updated:
+        events_to_emit = [{"type": "run_metadata_updated", "metadata": metadata}]
+    else:
+        events_to_emit = []
     events_to_emit.extend(events)
     trace_store.append_events(run_id, events_to_emit)
 

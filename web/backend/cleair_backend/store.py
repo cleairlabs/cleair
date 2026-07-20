@@ -42,13 +42,14 @@ class TraceStore:
             for run_id in self._agent_order
         ]
 
-    def start_run(self, service_name: str, run_id: str, metadata: dict[str, str | int | float | bool] | None = None) -> bool:
+    def start_run(self, service_name: str, run_id: str, metadata: dict[str, str | int | float | bool] | None = None) -> tuple[bool, bool]:
         existing_run = self._agents.get(run_id)
         if existing_run is not None:
             existing_run.service_name = service_name
+            metadata_updated = bool(metadata and any(existing_run.metadata.get(key) != value for key, value in metadata.items()))
             if metadata:
                 existing_run.metadata.update(metadata)
-            return False
+            return False, metadata_updated
         self._agents[run_id] = AgentRunState(
             service_name=service_name,
             run_id=run_id,
@@ -56,7 +57,7 @@ class TraceStore:
             metadata=dict(metadata or {}),
         )
         self._agent_order = [run_id, *[known_run_id for known_run_id in self._agent_order if known_run_id != run_id]]
-        return True
+        return True, False
 
     def get_service_name_for_run(self, run_id: str) -> str | None:
         agent_run = self._agents.get(run_id)

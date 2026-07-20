@@ -23,6 +23,7 @@ type StreamedAgentEvent = {
 export type AgentTrace = {
   runId: string;
   serviceName: string;
+  metadata: Record<string, string | number | boolean>;
   displayName: string;
   batchId: string | null;
   traceTree: TraceTreeState;
@@ -49,6 +50,7 @@ function upsertAgent(previousAgents: AgentTrace[], runId: string, update: (agent
   const baseAgent = existingAgent ?? {
     runId,
     serviceName: EMPTY_RUN_LABEL,
+    metadata: {},
     displayName: EMPTY_RUN_LABEL,
     batchId: null,
     traceTree: createEmptyTraceTree(EMPTY_RUN_ID, EMPTY_RUN_LABEL),
@@ -106,6 +108,7 @@ export function useAgents(backendUrl: string, enabled: boolean, refreshAccessSta
           agentSnapshots.map((agentSnapshot) => ({
             runId: agentSnapshot.runId,
             serviceName: agentSnapshot.serviceName,
+            metadata: agentSnapshot.metadata,
             ...readAgentMetadata(agentSnapshot.metadata, agentSnapshot.serviceName),
             traceTree: hydrateTraceTree(agentSnapshot.runId, agentSnapshot.serviceName, agentSnapshot.events),
             selectedNodeId: null,
@@ -138,14 +141,16 @@ export function useAgents(backendUrl: string, enabled: boolean, refreshAccessSta
       const streamedEvent = JSON.parse(messageEvent.data as string) as StreamedAgentEvent;
       setAgents((previousAgents) =>
         upsertAgent(previousAgents, streamedEvent.runId, (agent) => {
-          const metadata = streamedEvent.event.type === "run_started"
-            ? readAgentMetadata(streamedEvent.event.metadata, streamedEvent.serviceName)
-            : agent;
+          const run_metadata = streamedEvent.event.type === "run_started" || streamedEvent.event.type === "run_metadata_updated"
+            ? { ...agent.metadata, ...streamedEvent.event.metadata }
+            : agent.metadata;
+          const display_metadata = readAgentMetadata(run_metadata, streamedEvent.serviceName);
           return {
             ...agent,
             serviceName: streamedEvent.serviceName,
-            displayName: metadata.displayName,
-            batchId: metadata.batchId,
+            metadata: run_metadata,
+            displayName: display_metadata.displayName,
+            batchId: display_metadata.batchId,
             traceTree: applyTraceTreeEvent(agent.traceTree, streamedEvent.event),
             selectedNodeId: streamedEvent.event.type === "run_started" ? null : agent.selectedNodeId,
           };
