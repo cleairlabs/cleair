@@ -188,6 +188,29 @@ def test_live_ingest_emits_running_node_before_otlp_completion() -> None:
     ]
 
 
+def test_trace_ingest_emits_metadata_update_when_root_span_arrives_later() -> None:
+    client = TestClient(main.app)
+    client.post("/auth/verify", json={"code": "123456"})
+    api_key = client.post("/api-key").json()["apiKey"]
+
+    child_response = client.post(
+        "/v1/traces",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json=otlp_payload("run-1", "Agent", "child-span", "child", parent_span_id="root-span"),
+    )
+    root_response = client.post(
+        "/v1/traces",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json=otlp_payload("run-1", "Agent", "root-span", "root", metadata={"batch.id": "batch-1"}),
+    )
+    agents_response = client.get("/agents")
+
+    assert child_response.status_code == 204
+    assert root_response.status_code == 204
+    assert agents_response.json()[0]["metadata"] == {"batch.id": "batch-1"}
+    assert {"type": "run_metadata_updated", "metadata": {"batch.id": "batch-1"}} in agents_response.json()[0]["events"]
+
+
 def test_trace_ingest_accepts_otlp_protobuf() -> None:
     client = TestClient(main.app)
     client.post("/auth/verify", json={"code": "123456"})

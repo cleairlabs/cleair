@@ -8,6 +8,8 @@ export function applyTraceTreeEvent(graph: TraceTreeState, event: TraceTreeEvent
   switch (event.type) {
     case "run_started":
       return createEmptyTraceTree(event.runId, event.runLabel);
+    case "run_metadata_updated":
+      return graph;
     case "node_added": {
       const existingNode = graph.nodesById[event.node.id];
       if (existingNode) {

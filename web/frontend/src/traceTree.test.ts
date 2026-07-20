@@ -76,6 +76,12 @@ describe("flow graph reducer", () => {
     graph = applyTraceTreeEvent(graph, { type: "node_status_changed", nodeId: "x", status: "idle" });
     expect(graph).toBe(before);
   });
+
+  test("ignores run metadata updates", () => {
+    const graph = createEmptyTraceTree("run-1", "test");
+
+    expect(applyTraceTreeEvent(graph, { type: "run_metadata_updated", metadata: { "batch.id": "batch-1" } })).toBe(graph);
+  });
 });
 
 describe("formatDuration", () => {

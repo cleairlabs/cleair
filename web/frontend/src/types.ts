@@ -23,6 +23,7 @@ export type TraceTreeState = {
 
 export type TraceTreeEvent =
   | { type: "run_started"; runId: string; runLabel: string; metadata?: Record<string, string | number | boolean> }
+  | { type: "run_metadata_updated"; metadata: Record<string, string | number | boolean> }
   | { type: "node_added"; node: Omit<FlowNode, "status" | "durationMs" | "input" | "output"> & { input?: string } }
   | { type: "node_status_changed"; nodeId: string; status: FlowNodeStatus }
   | { type: "node_finished"; nodeId: string; durationMs: number; output?: string }
